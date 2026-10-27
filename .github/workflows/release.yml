@@ -43,7 +43,6 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Containerfile # buildx ne prepoznaje Containerfile sam
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

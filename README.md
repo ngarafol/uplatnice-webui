@@ -54,7 +54,7 @@ jedan fajl baze.
 | lozinke | `scrypt` (`node:crypto`) | bez bcrypt/argon2 ovisnosti |
 | sesija | potpisani cookie (HMAC) | stateless, preživi restart |
 | IBAN | `public/iban.js` | isti modul za server i preglednik (mod-97) |
-| kontejner | Podman + `Containerfile` | rootless, `make run` |
+| kontejner | Docker **ili** Podman (`Dockerfile`) | radi s oba, bez izmjena |
 | HTTPS | Caddy (`Caddyfile`) | automatski Let's Encrypt |
 | CI/CD | GitHub Actions | testovi na svaki push, slika na tag |
 
@@ -75,26 +75,71 @@ Podaci se drže u `data/uplatnice.db` (nije u gitu).
 
 ### Kontejner
 
+Radi isto s Dockerom i s Podmanom — `Dockerfile` je standardan, pa `docker build .`
+i `podman build .` rade bez ikakvih zastavica.
+
 ```bash
 cp .env.example .env   # SESSION_SECRET: openssl rand -hex 32
-make run               # gradi sliku i pokreće na http://localhost:3000
-make health
-make logs
+
+docker build -t uplatnice-webui .
+
+docker run -d --name uplatnice \
+  -p 3000:3000 \
+  --env-file .env \
+  -v uplatnice-data:/app/data \
+  uplatnice-webui
+
+docker logs -f uplatnice
 ```
 
-Baza živi u imenovanom volumenu `uplatnice-data`, pa preživljava `make stop` i
-obnovu slike.
+S Podmanom je identično — samo zamijeni `docker` s `podman`.
+
+Baza živi u imenovanom volumenu `uplatnice-data`, pa preživljava brisanje
+kontejnera i obnovu slike.
+
+<details>
+<summary>Ako imaš <code>make</code> — skraćenice</summary>
+
+`make` sam prepozna je li instaliran Podman ili Docker (`ENGINE=docker` /
+`ENGINE=podman` nadjačava). Naredbe rade isto, samo su kraće:
+
+| | |
+|---|---|
+| `make build` / `make run` / `make stop` | gradnja i životni ciklus kontejnera |
+| `make logs` / `make shell` / `make ps` / `make health` | pregled |
+| `make backup` | kopija baze u `backups/` (vidi dolje) |
+| `make proxy` / `make proxy-stop` | Caddy s HTTPS-om |
+| `make release VERSION=x.y.z` | tag + push (pokreće objavu) |
+
+</details>
 
 ### Javni server
 
-Upiši domenu u `Caddyfile`, postavi `SECURE_COOKIES=true` u `.env` i pokreni:
+Upiši domenu u `Caddyfile` i postavi `SECURE_COOKIES=true` u `.env`, pa pokreni
+aplikaciju i Caddy:
 
 ```bash
-make run && make proxy
+docker run -d --name uplatnice-proxy --network host \
+  -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" \
+  -v uplatnice-caddy-data:/data \
+  -v uplatnice-caddy-config:/config \
+  caddy:2
 ```
 
-Caddy sam pribavlja i obnajlja certifikat. `make backup` sprema konzistentnu
-kopiju baze u `backups/` (`VACUUM INTO`, sigurno uz WAL).
+Caddy sam pribavlja i obnavlja Let's Encrypt certifikat.
+
+### Sigurnosna kopija
+
+Baza je u WAL modu, pa obična kopija datoteke može biti nepotpuna. Kopija se
+radi `VACUUM INTO` unutar kontejnera:
+
+```bash
+docker exec uplatnice node -e 'const {DatabaseSync}=require("node:sqlite");const db=new DatabaseSync("/app/data/uplatnice.db");db.prepare("VACUUM INTO ?").run("/tmp/kopija.db");db.close();'
+docker cp uplatnice:/tmp/kopija.db ./uplatnice-$(date +%F).db
+docker exec uplatnice rm -f /tmp/kopija.db
+```
+
+Ili `make backup`, koje to isto spremi u `backups/`.
 
 ## Izdavanje verzije
 
