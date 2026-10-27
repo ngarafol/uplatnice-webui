@@ -1,0 +1,12 @@
+# Reverse proxy s automatskim HTTPS-om za javni server.
+#
+# 1. Zamijeni domenu svojom (mora pokazivati na ovaj server, portovi 80 i 443 otvoreni).
+# 2. U .env postavi SECURE_COOKIES=true — inače se cookie ne šalje preko HTTPS-a.
+# 3. `make proxy`, pa `make logs` za aplikaciju i `podman logs uplatnice-proxy` za Caddy.
+#
+# Caddy sam pribavlja i obnavlja Let's Encrypt certifikat.
+
+uplatnice.example.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000
+}

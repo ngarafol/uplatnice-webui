@@ -1,0 +1,14 @@
+# Ovo se NE kopira u sliku.
+node_modules
+data
+out
+test
+.git
+.gitignore
+.npm-cache
+.env
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+PLAN.md

@@ -1,0 +1,14 @@
+node_modules/
+data/
+out/
+sample.html
+sample.svg
+.npm-cache/
+*.db
+*.db-journal
+*.db-wal
+.env
+backups/
+
+# interni plan, ne ide u repo
+PLAN.md

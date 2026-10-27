@@ -1,0 +1,289 @@
+/* Ispis uplatnice (HUB 3A nalog) — jedini stilski list te stranice.
+   Papir je A4 portret; mjere su u mm/pt da ekran i ispis izgledaju isto.
+   Nema vanjskih fontova, nema slika: PDF417 je SVG, pa ostaje vektorski. */
+
+:root {
+  --ink: #000;
+  --rule: #333;
+  --rule-soft: #bbb;
+  --muted: #4a463f;
+  --bg: #f7f5f1;
+}
+
+* { box-sizing: border-box; }
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+body {
+  padding: 8mm 4mm 12mm;
+  font: 10pt/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ---------- Traka s uputom (samo na ekranu) ---------- */
+
+.print-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6mm;
+  width: 210mm;
+  max-width: 100%;
+  margin: 0 auto 4mm;
+  padding: 0 1mm;
+  font-size: 9pt;
+  color: var(--muted);
+}
+
+.print-button {
+  flex: none;
+  padding: 2.2mm 5mm;
+  border: 1px solid #1f5f8b;
+  border-radius: 4px;
+  background: #1f5f8b;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.print-button:hover { background: #174a6d; }
+
+/* ---------- Papir ---------- */
+
+.sheet {
+  width: 210mm;
+  /* Visina papira: flex dijete (.sheet-grid) se rastegne do dna, a dug
+     sadržaj smije rasti umjesto da se odreže. */
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 12mm;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 2px 16px rgba(29, 27, 24, 0.16);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Zaglavlje ---------- */
+
+.sheet-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6mm;
+  padding-bottom: 2.5mm;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 4mm;
+}
+
+.form-code {
+  margin: 0;
+  font-size: 7pt;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.sheet-title {
+  margin: 0;
+  font-size: 12pt;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: right;
+}
+
+/* ---------- Mreža obrasca ---------- */
+
+.sheet-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52mm;
+  grid-template-areas:
+    "payer   amount"
+    "payee   payee"
+    "fields  fields"
+    "barcode stamps";
+  /* Treći red upija preostalu visinu, pa barkod i potpisi stoje pri dnu. */
+  grid-template-rows: auto auto 1fr auto;
+  gap: 4mm;
+}
+
+.payer   { grid-area: payer; }
+.payee   { grid-area: payee; }
+.amount  { grid-area: amount; align-self: start; }
+.fields  { grid-area: fields; }
+.barcode { grid-area: barcode; align-self: end; }
+.stamps  { grid-area: stamps; align-self: end; }
+
+.box,
+.field,
+.stamp-box {
+  border: 1px solid var(--rule);
+  padding: 2mm 2.4mm 2.2mm;
+  min-width: 0;
+  break-inside: avoid;
+}
+
+.box-label {
+  margin: 0 0 1.4mm;
+  font-size: 6.5pt;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---------- Platitelj / primatelj ---------- */
+
+.party { min-height: 42mm; }
+
+.party-name {
+  margin: 0 0 1mm;
+  font-size: 11pt;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.party-line {
+  margin: 0;
+  font-size: 10pt;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Valuta i iznos ---------- */
+
+.amount {
+  display: flex;
+  flex-direction: column;
+  min-height: 42mm;
+}
+
+.amount-value {
+  margin: auto 0 0;
+  font-size: 17pt;
+  font-weight: 700;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Najveći dopušteni iznos ima 15 znamenki; tada ga smanjimo da ne prijeđe okvir. */
+.amount-value-sm { font-size: 13pt; }
+.amount-value-xs { font-size: 10pt; }
+
+.amount-value .currency {
+  display: block;
+  font-size: 9pt;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+/* ---------- Polja plaćanja ---------- */
+
+.fields {
+  display: grid;
+  /* Redovi su fiksni (kao na obrascu); ostatak stranice ostaje prazan. */
+  grid-template-rows: repeat(3, minmax(26mm, 34mm));
+  align-content: start;
+  gap: 3mm;
+  min-width: 0;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 32mm minmax(0, 1fr);
+}
+
+/* Susjedna polja dijele jednu liniju, kao na obrascu. */
+.field-row > .field:first-child { border-right: 0; }
+
+.field { min-height: 22mm; }
+
+.field-value {
+  margin: 0;
+  font-size: 10.5pt;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.iban {
+  font-size: 11pt;
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Barkod ---------- */
+
+.barcode {
+  display: flex;
+  flex-direction: column;
+  gap: 1mm;
+  min-width: 0;
+}
+
+/* 60mm po vanjskom okviru SVG-a; sami moduli su ~56mm, dovoljno za skeniranje. */
+.barcode-svg svg {
+  display: block;
+  width: 60mm;
+  height: auto;
+}
+
+/* ---------- Pečat i potpis ---------- */
+
+.stamps {
+  display: grid;
+  gap: 3mm;
+}
+
+.stamp-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 20mm;
+  border-color: var(--rule-soft);
+}
+
+.stamp-box .box-label { margin: 0; }
+
+/* ---------- Ispis ---------- */
+
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff;
+    padding: 0;
+  }
+
+  .print-bar { display: none; }
+
+  .sheet {
+    width: auto;
+    /* Isto kao na ekranu (A4 minus @page margine), samo bez sjenke. */
+    /* Malo manje od 273mm (A4 minus margine) da zaokruživanje ne doda praznu stranicu. */
+    min-height: 271mm;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  /* Sive linije i tekst moraju ostati vidljivi na papiru. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
