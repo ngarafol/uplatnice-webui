@@ -75,27 +75,41 @@ Podaci se drže u `data/uplatnice.db` (nije u gitu).
 
 ### Kontejner
 
-Radi isto s Dockerom i s Podmanom — `Dockerfile` je standardan, pa `docker build .`
-i `podman build .` rade bez ikakvih zastavica.
+Najbrže je povući objavljenu sliku:
 
 ```bash
 cp .env.example .env   # SESSION_SECRET: openssl rand -hex 32
 
-docker build -t uplatnice-webui .
+docker pull ghcr.io/ngarafol/uplatnice-webui:latest
 
 docker run -d --name uplatnice \
   -p 3000:3000 \
   --env-file .env \
   -v uplatnice-data:/app/data \
-  uplatnice-webui
+  ghcr.io/ngarafol/uplatnice-webui:latest
 
 docker logs -f uplatnice
 ```
 
-S Podmanom je identično — samo zamijeni `docker` s `podman`.
+Slike se objavljuju za `amd64` i `arm64`, s oznakama `latest`, `0`, `0.1` i
+`0.1.0`. Na serveru radije prikvači točnu verziju (`:0.1.0`) nego `latest` —
+inače `pull` tiho donese drugu sliku.
+
+Isto radi s Podmanom — zamijeni `docker` s `podman`.
 
 Baza živi u imenovanom volumenu `uplatnice-data`, pa preživljava brisanje
 kontejnera i obnovu slike.
+
+#### Gradnja iz izvora
+
+Ako želiš sam graditi (ili mijenjati kod), `Dockerfile` je standardan pa rade i
+`docker build .` i `podman build .`, bez ikakvih zastavica:
+
+```bash
+docker build -t uplatnice-webui .
+docker run -d --name uplatnice -p 3000:3000 --env-file .env \
+  -v uplatnice-data:/app/data uplatnice-webui
+```
 
 <details>
 <summary>Ako imaš <code>make</code> — skraćenice</summary>
