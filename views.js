@@ -434,7 +434,7 @@ export function dashboardPage({ uplatnice, user, sazetak, mjesec, today = todayI
   });
 }
 
-export function listaPage({ uplatnice, user, sazetak, mjesec, today = todayIso() }) {
+export function listaPage({ uplatnice, user, sazetak, mjesec, uvezeno = 0, today = todayIso() }) {
   const active = uplatnice.filter((u) => !u.archived);
   const archived = uplatnice.filter((u) => u.archived);
 
@@ -444,10 +444,18 @@ export function listaPage({ uplatnice, user, sazetak, mjesec, today = todayIso()
     body: html`
       <div class="page-head">
         <h1>Uplatnice</h1>
-        <a class="btn primary" href="/uplatnice/nova">+ Nova uplatnica</a>
+        <div class="head-actions">
+          <a class="btn" href="/uplatnice/izvoz">Izvezi</a>
+          <a class="btn" href="/uplatnice/uvoz">Uvezi</a>
+          <a class="btn primary" href="/uplatnice/nova">+ Nova uplatnica</a>
+        </div>
       </div>
 
       ${statsCard(sazetak, mjesec)}
+
+      ${uvezeno > 0
+        ? feedback(`Uvezeno ${plural(uvezeno, 'uplatnica', 'uplatnice', 'uplatnica')}.`, 'ok')
+        : ''}
 
       <section class="card">
         ${uplatnicaTable(active, today, 'Nema aktivnih uplatnica.', '/uplatnice')}
@@ -830,6 +838,61 @@ export function povijestPage({ mjeseci, user }) {
             </section>`,
           )
         : html`<section class="card"><p class="empty">Još nema zabilježenih plaćanja.</p></section>`}
+    `,
+  });
+}
+
+export function uvozPage({ user, greska, greske = [], json = '' }) {
+  return layout({
+    title: 'Uvoz uplatnica',
+    user,
+    body: html`
+      <a class="back-link" href="/uplatnice">← Natrag</a>
+      <div class="page-head"><h1>Uvoz uplatnica</h1></div>
+
+      <section class="card">
+        <p class="muted">
+          Odaberi JSON datoteku koju je ova aplikacija izvezla, ili zalijepi njezin
+          sadržaj. Uvoze se samo ispravne uplatnice — ako ijedna ne prođe provjeru,
+          ne uvozi se ništa.
+        </p>
+
+        ${greska ? feedback(greska) : ''}
+        ${greske.length
+          ? html`<ul class="error-list">${greske.map((g) => html`<li>${g}</li>`)}</ul>`
+          : ''}
+
+        <form method="post" action="/uplatnice/uvoz" class="stack">
+          <label class="field">
+            <span class="field-label">Datoteka</span>
+            <input type="file" accept=".json,application/json" data-uvoz-datoteka>
+          </label>
+          <label class="field">
+            <span class="field-label">ili zalijepi sadržaj</span>
+            <textarea name="json" rows="14" spellcheck="false" required>${json}</textarea>
+          </label>
+          <div class="actions">
+            <button class="btn primary" type="submit">Uvezi</button>
+            <a class="btn" href="/uplatnice">Odustani</a>
+          </div>
+        </form>
+      </section>
+
+      <script>
+        // Odabrana datoteka se samo prebaci u tekstualno polje, pa server ne
+        // mora parsirati multipart — jedan obrazac manje.
+        const datoteka = document.querySelector('[data-uvoz-datoteka]');
+        const polje = document.querySelector('textarea[name=json]');
+        if (datoteka && polje) {
+          datoteka.addEventListener('change', function () {
+            const f = datoteka.files && datoteka.files[0];
+            if (!f) return;
+            const citac = new FileReader();
+            citac.onload = function () { polje.value = String(citac.result); };
+            citac.readAsText(f);
+          });
+        }
+      </script>
     `,
   });
 }

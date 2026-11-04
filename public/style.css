@@ -227,7 +227,7 @@ fieldset legend { padding: 0 6px; color: var(--muted); font-size: 13px; }
 .field { display: grid; gap: 5px; }
 .field-label { font-size: 13px; color: var(--muted); }
 .req { color: var(--danger); }
-.field input, .field select {
+.field input, .field select, .field textarea {
   font: inherit;
   padding: 8px 10px;
   border: 1px solid var(--border);
@@ -237,7 +237,7 @@ fieldset legend { padding: 0 6px; color: var(--muted); font-size: 13px; }
   min-width: 0;
   width: 100%;
 }
-.field input:focus, .field select:focus { outline: 2px solid var(--focus-ring); border-color: var(--primary); }
+.field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--focus-ring); border-color: var(--primary); }
 .field-error { color: var(--danger); font-size: 13px; }
 .field-hint { margin: 0; color: var(--muted); font-size: 12px; }
 
@@ -450,3 +450,15 @@ fieldset legend { padding: 0 6px; color: var(--muted); font-size: 13px; }
 
 /* Napomena uz barkod kad uplatnica ne stane u HUB 3A obrazac. */
 .note-warn { margin: 0; font-size: 13px; color: var(--warn-text); }
+
+/* Akcije u zaglavlju stranice (npr. Izvezi / Uvezi / Nova uplatnica). */
+.head-actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Popis grešaka kod uvoza. */
+.error-list {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  color: var(--danger);
+  font-size: 14px;
+}
+.field textarea { resize: vertical; min-height: 160px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }

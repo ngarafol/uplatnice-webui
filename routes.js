@@ -5,6 +5,7 @@
 import express from 'express';
 import { buildPayload, formatAmount, LIMITS, parseAmount, validate } from './hub3.js';
 import { pdf417svg } from './barcode.js';
+import { exportFile, parseExportFile } from './izvoz.js';
 import { MIN_PASSWORD_LENGTH, clearSession, hashPassword, issueSession, requireLogin, verifyPassword } from './auth.js';
 import {
   INTERVAL_UNITS,
@@ -37,6 +38,7 @@ import {
   povijestPage,
   prijavaPage,
   registracijaPage,
+  uvozPage,
 } from './views.js';
 
 /** validate() imena polja -> imena polja u formi (i u bazi). */
@@ -368,6 +370,7 @@ export function createRouter(db) {
       listaPage({
         uplatnice: uplatniceZaKorisnika(db, req.user.id),
         user: req.user,
+        uvezeno: Number(req.query.uvezeno) || 0,
         ...sazetakZa(req),
       }),
     );
@@ -393,6 +396,68 @@ export function createRouter(db) {
       }
     }
     send(res, formaPage({ mode: 'nova', values, user: req.user }));
+  });
+
+  router.get('/uplatnice/izvoz', requireLogin, (req, res) => {
+    // Izvoze se samo vlastite, aktivne uplatnice — dijeljene pripadaju drugima,
+    // a arhivirane namjerno ne vraćamo u optjecaj.
+    const moje = db
+      .prepare('SELECT * FROM uplatnica WHERE owner_id = ? AND archived = 0 ORDER BY label')
+      .all(req.user.id);
+
+    res.set('Content-Disposition', `attachment; filename="uplatnice-${todayIso()}.json"`);
+    res.type('application/json').send(`${JSON.stringify(exportFile(moje), null, 2)}\n`);
+  });
+
+  router.get('/uplatnice/uvoz', requireLogin, (req, res) => {
+    send(res, uvozPage({ user: req.user }));
+  });
+
+  router.post('/uplatnice/uvoz', requireLogin, (req, res) => {
+    const tekst = String(req.body.json ?? '');
+    const procitano = parseExportFile(tekst);
+    if (!procitano.ok) {
+      return send(res, uvozPage({ user: req.user, greska: procitano.greska, json: tekst }), 400);
+    }
+    if (procitano.tijela.length > 500) {
+      return send(res, uvozPage({ user: req.user, greska: 'Najviše 500 uplatnica u jednoj datoteci.', json: tekst }), 400);
+    }
+
+    // Ista validacija kao za ručni unos; ako ijedna padne, ne uvozi se ništa.
+    const greske = [];
+    const zapisi = [];
+    procitano.tijela.forEach((tijelo, i) => {
+      const { errors, record } = readUplatnicaForm(tijelo, req.user);
+      if (record) {
+        zapisi.push(record);
+        return;
+      }
+      const opis = Object.values(errors).join(' ');
+      greske.push(`Uplatnica ${i + 1}${tijelo.label ? ` (${tijelo.label})` : ''}: ${opis}`);
+    });
+
+    if (greske.length) {
+      return send(res, uvozPage({ user: req.user, greske, json: tekst }), 400);
+    }
+
+    const now = new Date().toISOString();
+    const insert = db.prepare(
+      `INSERT INTO uplatnica (owner_id, ${UPLATNICA_KOLONE.join(', ')}, archived, created_at, updated_at)
+       VALUES (?, ${UPLATNICA_PITANJA}, 0, ?, ?)`,
+    );
+
+    db.exec('BEGIN');
+    try {
+      for (const record of zapisi) {
+        insert.run(req.user.id, ...uplatnicaVrijednosti(record), now, now);
+      }
+      db.exec('COMMIT');
+    } catch (e) {
+      db.exec('ROLLBACK');
+      throw e;
+    }
+
+    res.redirect(303, `/uplatnice?uvezeno=${zapisi.length}`);
   });
 
   router.post('/uplatnice', requireLogin, (req, res) => {

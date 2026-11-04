@@ -22,6 +22,7 @@ sama popuni nalog za plaćanje.
   i plaćanja po mjesecima
 - **Dijeljenje** — uplatnicu možeš podijeliti s drugim korisnikom; on je vidi i
   može označiti plaćenom, ali je ne može uređivati
+- **Izvoz i uvoz** — uplatnice u JSON datoteku i natrag
 - **Tamni način**, IBAN provjera (sve države) uživo u formi
 
 ![Detalj uplatnice](docs/uplatnica.jpg)
@@ -165,6 +166,47 @@ Tag pokreće GitHub Actions: gradi sliku za `amd64` i `arm64` i pusha je u
 `ghcr.io/<korisnik>/<repo>` s oznakama `1.0.0`, `1.0`, `1`, `latest`, pa otvori
 GitHub Release s popisom promjena. Push na `main` bez taga vrti samo testove i
 probnu gradnju.
+
+## Izvoz i uvoz
+
+Na popisu uplatnica su **Izvezi** i **Uvezi**. Izvoz preuzima `.json` datoteku s
+aktivnim uplatnicama; uvoz prima istu takvu datoteku, ili zalijepljeni sadržaj.
+
+```json
+{
+  "format": "uplatnice-webui",
+  "version": 1,
+  "izvezeno": "2026-11-05T00:00:00.000Z",
+  "uplatnice": [
+    {
+      "oznaka": "Struja",
+      "primatelj": {
+        "naziv": "HEP d.o.o.",
+        "adresa": "Ulica grada Vukovara 37",
+        "grad": "Zagreb"
+      },
+      "iban": "HR6710010051738712003",
+      "model": "HR68",
+      "poziv_na_broj": "1511-111",
+      "iznos_cents": 7000,
+      "sifra_namjene": "COST",
+      "opis": "Uplata za 11. mjesec",
+      "ponavljanje": { "jedinica": "mjesec", "svakih": 1, "sljedece": "2026-11-05" }
+    }
+  ]
+}
+```
+
+- `iznos_cents` je cijeli broj centi. Za ručno sastavljene datoteke prihvaća se
+  i `iznos` kao tekst (`"70,00"`).
+- `ponavljanje` može biti `null` — jednokratna uplatnica.
+- Uvoz prolazi kroz **istu validaciju** kao ručni unos (IBAN mod-97, dužine
+  polja, model). Ako ijedna uplatnica ne prođe, **ne uvozi se ništa**, a popis
+  grešaka pokaže koja je i zašto.
+- Izvoze se samo vlastite aktivne uplatnice: dijeljene pripadaju drugima, a
+  arhivirane se ne vraćaju u optjecaj.
+- Format je vlastit i nije kompatibilan s datotekama drugih generatora
+  uplatnica.
 
 ## O HUB 3A barkodu
 
