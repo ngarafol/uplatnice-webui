@@ -130,7 +130,9 @@ function readUplatnicaForm(body, user) {
     prim_name: String(body.prim_name ?? '').trim(),
     prim_address: String(body.prim_address ?? '').trim(),
     prim_city: String(body.prim_city ?? '').trim(),
-    iban: String(body.iban ?? '').trim(),
+    // IBAN je case-insensitive; čuvamo ga velikim slovima da zapis i prikaz
+    // budu isti bez obzira kako je unesen (uvoz iz drugih alata često je malim).
+    iban: String(body.iban ?? '').trim().replace(/\s+/g, '').toUpperCase(),
     model: String(body.model ?? '').trim().toUpperCase(),
     poziv_na_broj: String(body.poziv_na_broj ?? '').trim(),
     sifra_namjene: String(body.sifra_namjene ?? '').trim().toUpperCase(),

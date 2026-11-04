@@ -205,8 +205,11 @@ aktivnim uplatnicama; uvoz prima istu takvu datoteku, ili zalijepljeni sadržaj.
   grešaka pokaže koja je i zašto.
 - Izvoze se samo vlastite aktivne uplatnice: dijeljene pripadaju drugima, a
   arhivirane se ne vraćaju u optjecaj.
-- Format je vlastit i nije kompatibilan s datotekama drugih generatora
-  uplatnica.
+- Podržan je i **format uplatime.com** — jedna uplatnica po datoteci, s ravnim
+  poljima (`platitelj__ime`, `primatelj__iban`, `iznos`, `opis_placanja`…).
+  Prepoznaje se automatski, pa se stare datoteke mogu uvesti bez prepisivanja.
+  Platitelj se pritom **ne** uzima iz datoteke: u barkod ide profil korisnika
+  koji je prijavljen.
 
 ## O HUB 3A barkodu
 

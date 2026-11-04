@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { exportFile, jsonToBody, parseExportFile, uplatnicaToJson } from '../izvoz.js';
+import {
+  exportFile,
+  isUplatimeCom,
+  jsonToBody,
+  parseExportFile,
+  uplatnicaToJson,
+  uplatimeComToBody,
+} from '../izvoz.js';
 
 const REDAK = {
   label: 'Struja',
@@ -75,4 +82,56 @@ test('uvoz: odbija neispravan JSON, krivi format i prazan popis', () => {
 
   const bezPopisa = parseExportFile(JSON.stringify({ format: 'uplatnice-webui' }));
   assert.equal(bezPopisa.ok, false);
+});
+
+test('uplatime.com: prepoznaje ravan zapis s dvostrukom donjom crtom', () => {
+  const zapis = { naziv: 'tts', platitelj__ime: 'x', primatelj__iban: 'HR1' };
+  assert.ok(isUplatimeCom(zapis));
+  assert.ok(!isUplatimeCom({ oznaka: 'naš format' }));
+  assert.ok(!isUplatimeCom(null));
+  assert.ok(!isUplatimeCom([zapis]));
+});
+
+test('uplatime.com: cijela datoteka se pretvara u našu formu', () => {
+  const datoteka = {
+    naziv: 'tts',
+    platitelj__ime: 'nika garafolic',
+    platitelj__adresa: 'kh21',
+    platitelj__gradMjesto: 'vzd',
+    primatelj__ime: 'sportska abeceda',
+    primatelj__adresa: 'bb',
+    primatelj__gradMjesto: 'vzd',
+    primatelj__iban: 'hr6723600001102219379',
+    iznos: '40,00',
+    primatelj__model: 'HR00',
+    primatelj__pozivNaBroj: '122025-1328',
+    sifra__namjene: '',
+    opis_placanja: 'clanarina Nika Garafolic 12/25',
+  };
+  const procitano = parseExportFile(JSON.stringify(datoteka));
+  assert.ok(procitano.ok);
+  const t = procitano.tijela[0];
+  assert.equal(t.label, 'tts');
+  assert.equal(t.prim_name, 'sportska abeceda');
+  assert.equal(t.iban, 'hr6723600001102219379', 'normalizaciju radi validacija, ne parser');
+  assert.equal(t.iznos, '40,00');
+  assert.equal(t.model, 'HR00');
+  assert.equal(t.poziv_na_broj, '122025-1328');
+  assert.equal(t.opis, 'clanarina Nika Garafolic 12/25');
+  assert.equal(t.interval_unit, '');
+});
+
+test('uplatime.com: bez naziva oznaka se uzima od primatelja', () => {
+  const t = uplatimeComToBody({ primatelj__ime: 'HEP', primatelj__iban: 'HR1' });
+  assert.equal(t.label, 'HEP');
+});
+
+test('uplatime.com: prihvaća i listu takvih zapisa', () => {
+  const lista = [
+    { naziv: 'a', primatelj__iban: 'HR1', primatelj__ime: 'X' },
+    { naziv: 'b', primatelj__iban: 'HR2', primatelj__ime: 'Y' },
+  ];
+  const procitano = parseExportFile(JSON.stringify(lista));
+  assert.ok(procitano.ok);
+  assert.deepEqual(procitano.tijela.map((t) => t.label), ['a', 'b']);
 });

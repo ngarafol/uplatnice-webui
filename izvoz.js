@@ -81,6 +81,41 @@ export function jsonToBody(zapis) {
 }
 
 /**
+ * uplatime.com sprema JEDNU uplatnicu kao ravan objekt s poljima spojenim
+ * dvostrukom donjom crtom (platitelj__ime, primatelj__iban, ...). Prepoznajemo
+ * ga po tim ključevima, da se ne mora ručno prepisivati.
+ */
+export function isUplatimeCom(zapis) {
+  return (
+    zapis !== null &&
+    typeof zapis === 'object' &&
+    !Array.isArray(zapis) &&
+    ('primatelj__iban' in zapis || 'primatelj__pozivNaBroj' in zapis || 'platitelj__ime' in zapis)
+  );
+}
+
+/** Zapis iz uplatime.com -> "body" kakav šalje naša forma. */
+export function uplatimeComToBody(zapis) {
+  return {
+    // "naziv" je oznaka koju je korisnik dao uplatnici; ako je nema, uzmi
+    // naziv primatelja da oznaka ne bude prazna.
+    label: text(zapis.naziv) || text(zapis.primatelj__ime),
+    prim_name: text(zapis.primatelj__ime),
+    prim_address: text(zapis.primatelj__adresa),
+    prim_city: text(zapis.primatelj__gradMjesto),
+    iban: text(zapis.primatelj__iban),
+    model: text(zapis.primatelj__model),
+    poziv_na_broj: text(zapis.primatelj__pozivNaBroj),
+    sifra_namjene: text(zapis.sifra__namjene),
+    opis: text(zapis.opis_placanja),
+    iznos: text(zapis.iznos),
+    interval_unit: '',
+    interval_count: 1,
+    next_due: '',
+  };
+}
+
+/**
  * Pročita datoteku i vrati popis "body" objekata.
  * @returns {{ ok: true, tijela: object[] } | { ok: false, greska: string }}
  */
@@ -90,6 +125,11 @@ export function parseExportFile(tekst) {
     podaci = JSON.parse(String(tekst ?? ''));
   } catch {
     return { ok: false, greska: 'Datoteka nije ispravan JSON.' };
+  }
+
+  // uplatime.com: jedan zapis s ravnim poljima.
+  if (isUplatimeCom(podaci)) {
+    return { ok: true, tijela: [uplatimeComToBody(podaci)] };
   }
 
   // Prihvaćamo i golu listu, za ručno sastavljene datoteke.
@@ -103,6 +143,10 @@ export function parseExportFile(tekst) {
   }
   if (!lista.length) {
     return { ok: false, greska: 'Datoteka ne sadrži nijednu uplatnicu.' };
+  }
+
+  if (lista.every(isUplatimeCom)) {
+    return { ok: true, tijela: lista.map(uplatimeComToBody) };
   }
 
   return { ok: true, tijela: lista.map(jsonToBody) };
