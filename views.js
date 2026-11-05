@@ -311,7 +311,7 @@ export function registracijaPage({ values = {}, errors = {} } = {}) {
             <legend>Podaci o platitelju</legend>
             <div class="stack">
               <p class="field-hint">
-                Ime, adresa i grad upisuju se u barkod svake uplatnice kao platitelj.
+                Ime, adresa i poštanski broj s mjestom upisuju se u barkod svake uplatnice kao platitelj.
               </p>
               ${platiteljFields(values, errors)}
             </div>
@@ -338,8 +338,8 @@ function plural(n, one, few, many) {
 /** Ime, adresa, grad i e-mail — ista polja u registraciji i u Postavkama. */
 const platiteljFields = (values, errors) => [
   field({ name: 'name', label: 'Ime i prezime', value: values.name, required: true, error: errors.name, attrs: 'maxlength=30' }),
-  field({ name: 'address', label: 'Adresa', value: values.address, required: true, error: errors.address, attrs: 'maxlength=27' }),
-  field({ name: 'city', label: 'Grad', value: values.city, required: true, error: errors.city, attrs: 'maxlength=27' }),
+  field({ name: 'address', label: 'Adresa (ulica i broj)', value: values.address, required: true, error: errors.address, attrs: 'maxlength=27 placeholder="npr. Ilica 10"' }),
+  field({ name: 'city', label: 'Poštanski broj i mjesto', value: values.city, required: true, error: errors.city, attrs: 'maxlength=27 placeholder="npr. 10000 Zagreb"' }),
 ];
 
 /** Sažetak tekućeg mjeseca: plaćeno + što je još otvoreno. */
@@ -505,8 +505,8 @@ export function formaPage({ mode, values, user, errors = {}, obavijest, today = 
           <legend>Primatelj</legend>
           <div class="form-grid">
             ${field({ name: 'prim_name', label: 'Naziv / ime', value: values.prim_name, required: true, error: errors.prim_name, attrs: 'maxlength=35' })}
-            ${field({ name: 'prim_address', label: 'Adresa', value: values.prim_address, required: true, error: errors.prim_address, attrs: 'maxlength=35' })}
-            ${field({ name: 'prim_city', label: 'Grad', value: values.prim_city, required: true, error: errors.prim_city, attrs: 'maxlength=27' })}
+            ${field({ name: 'prim_address', label: 'Adresa (ulica i broj)', value: values.prim_address, required: true, error: errors.prim_address, attrs: 'maxlength=35 placeholder="npr. Ilica 10"' })}
+            ${field({ name: 'prim_city', label: 'Poštanski broj i mjesto', value: values.prim_city, required: true, error: errors.prim_city, attrs: 'maxlength=27 placeholder="npr. 10000 Zagreb"' })}
             ${field({ name: 'iban', label: 'IBAN', value: values.iban, required: true, error: errors.iban, attrs: 'placeholder="HR00 0000 0000 0000 0000 0" spellcheck=false maxlength=34' })}
             ${field({ name: 'model', label: 'Model', value: values.model || 'HR00', error: errors.model, attrs: 'list=modeli size=6' })}
             <datalist id="modeli">${models.map((m) => html`<option value="${m}"></option>`)}</datalist>
@@ -709,7 +709,7 @@ export function postavkePage({ values, user, errors = {}, nacini = [], poruka, g
       <form method="post" action="/postavke" class="card form-grid">
         <h2 class="span-2">Podaci platitelja</h2>
         <p class="span-2 muted">
-          Ime, adresa i grad upisuju se u barkod svake uplatnice kao <strong>platitelj</strong>.
+          Ime, adresa i poštanski broj s mjestom upisuju se u barkod svake uplatnice kao <strong>platitelj</strong>.
         </p>
         ${platiteljFields(values, errors)}
         ${field({ name: 'email', label: 'E-mail', value: values.email, type: 'email', required: true, error: errors.email })}
