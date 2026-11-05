@@ -10,8 +10,8 @@
  * (IBAN mod-97, dužine polja, model, interval) i ne mogu se razići.
  */
 
-export const IZVOZ_FORMAT = 'uplatnice-webui';
-export const IZVOZ_VERSION = 1;
+const IZVOZ_FORMAT = 'uplatnice-webui';
+const IZVOZ_VERSION = 1;
 
 /** Redak iz baze -> jedan zapis u datoteci. */
 export function uplatnicaToJson(uplatnica) {

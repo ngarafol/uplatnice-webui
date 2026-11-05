@@ -97,6 +97,8 @@ const UPLATNICA_KOLONE = [
 ];
 const UPLATNICA_PITANJA = UPLATNICA_KOLONE.map(() => '?').join(', ');
 const uplatnicaVrijednosti = (record) => UPLATNICA_KOLONE.map((kolona) => record[kolona]);
+const UPLATNICA_INSERT = `INSERT INTO uplatnica (owner_id, ${UPLATNICA_KOLONE.join(', ')}, archived, created_at, updated_at)
+  VALUES (?, ${UPLATNICA_PITANJA}, 0, ?, ?)`;
 
 const isIsoDate = (value) =>
   typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00`));
@@ -443,10 +445,7 @@ export function createRouter(db) {
     }
 
     const now = new Date().toISOString();
-    const insert = db.prepare(
-      `INSERT INTO uplatnica (owner_id, ${UPLATNICA_KOLONE.join(', ')}, archived, created_at, updated_at)
-       VALUES (?, ${UPLATNICA_PITANJA}, 0, ?, ?)`,
-    );
+    const insert = db.prepare(UPLATNICA_INSERT);
 
     db.exec('BEGIN');
     try {
@@ -468,10 +467,7 @@ export function createRouter(db) {
 
     const now = new Date().toISOString();
     const result = db
-      .prepare(
-        `INSERT INTO uplatnica (owner_id, ${UPLATNICA_KOLONE.join(', ')}, archived, created_at, updated_at)
-         VALUES (?, ${UPLATNICA_PITANJA}, 0, ?, ?)`,
-      )
+      .prepare(UPLATNICA_INSERT)
       .run(req.user.id, ...uplatnicaVrijednosti(record), now, now);
 
     res.redirect(303, `/uplatnice/${result.lastInsertRowid}`);

@@ -3,6 +3,7 @@ node_modules
 data
 out
 test
+docs
 .git
 .gitignore
 .npm-cache
