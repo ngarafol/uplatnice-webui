@@ -54,7 +54,10 @@ const MAX_CENTS = 999_999_999_999_999; // polje u barkodu ima točno 15 znamenki
  * i zamjenjuje se razmakom. Kodna stranica je UTF-8, pa se dijakritika NE
  * prevodi u ASCII — bankovna aplikacija tada pokaže isto ime kao na uplatnici.
  */
-const NEDOZVOLJENO = /[^0-9A-ZČĆĐŠŽQWXY .,:\-+?'\/()]/g;
+// ponytail: navodnik nije u dopuštenim znakovima PDF417 upute, ali ga stvarna
+// uplatnica (vrtić) sadrži i banka ga prihvaća. Ako počne smetati pri skeniranju,
+// makni `"` iz ovog skupa.
+const NEDOZVOLJENO = /[^0-9A-ZČĆĐŠŽQWXY .,:\-+?'"\/()]/g;
 
 export function zaBarkod(raw) {
   return String(raw ?? '')
