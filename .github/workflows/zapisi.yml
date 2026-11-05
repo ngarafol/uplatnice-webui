@@ -1,0 +1,33 @@
+# Primjenjuje tekstove iz docs/izdanja/*.md na već objavljena izdanja.
+# Treba kad se zapis dopiše ili popravi nakon što je tag već objavljen —
+# release.yml inače čita zapis samo u trenutku objave.
+name: Zapisi izdanja
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'docs/izdanja/**'
+      - '.github/workflows/zapisi.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  zapisi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Primijeni zapise na objavljena izdanja
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for datoteka in docs/izdanja/*.md; do
+            tag="$(basename "$datoteka" .md)"
+            if gh release view "$tag" >/dev/null 2>&1; then
+              gh release edit "$tag" --title "$tag" --notes-file "$datoteka"
+              echo "osvježeno: $tag"
+            else
+              echo "preskočeno (nema izdanja): $tag"
+            fi
+          done

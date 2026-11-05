@@ -52,9 +52,17 @@ jobs:
 
       # Ponovljivo: ako release s tim tagom već postoji (npr. tag je pomaknut),
       # obriši ga pa napravi novi. Tag se ne dira.
+      # Tekst izdanja je napisan u docs/izdanja/<tag>.md — čitljiviji je od
+      # automatskog popisa commitova. Ako zapisa nema, fallback na generirano.
       - name: GitHub Release
         run: |
           gh release delete "$GITHUB_REF_NAME" --yes 2>/dev/null || true
-          gh release create "$GITHUB_REF_NAME" --generate-notes --title "$GITHUB_REF_NAME"
+          zapis="docs/izdanja/$GITHUB_REF_NAME.md"
+          if [ -f "$zapis" ]; then
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file "$zapis"
+          else
+            echo "Nema $zapis — koristim automatski generiran tekst."
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

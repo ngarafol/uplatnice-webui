@@ -158,14 +158,15 @@ Ili `make backup`, koje to isto spremi u `backups/`.
 
 ## Izdavanje verzije
 
-```bash
-make release VERSION=1.0.0
-```
+`make release VERSION=x.y.z` provjerava da je stablo čisto i da postoji zapis
+izdanja, upiše verziju u `package.json`, commita, tagira i pusha.
 
-Tag pokreće GitHub Actions: gradi sliku za `amd64` i `arm64` i pusha je u
-`ghcr.io/<korisnik>/<repo>` s oznakama `1.0.0`, `1.0`, `1`, `latest`, pa otvori
-GitHub Release s popisom promjena. Push na `main` bez taga vrti samo testove i
-probnu gradnju.
+Zapis izdanja je datoteka `docs/izdanja/v<x.y.z>.md` — njen sadržaj postaje tekst
+na GitHub Releases. Piše se ručno jer je čitljiviji od popisa commitova; ako
+datoteke nema, `make release` stane prije tagiranja.
+
+Izmjena zapisa nakon objave: workflow **Zapisi izdanja** prepiše tekstove svih
+objavljenih verzija iz tih datoteka.
 
 ## Oznake u opisu i pozivu na broj
 
