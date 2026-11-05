@@ -191,10 +191,12 @@ test('dužine polja po službenoj uputi (HUB v6, tablica 1)', () => {
   assert.ok(!validate({ ...SAMPLE, payerName: 'x'.repeat(31) }).ok);
   assert.ok(validate({ ...SAMPLE, payerAddress: 'x'.repeat(27) }).ok);
   assert.ok(!validate({ ...SAMPLE, payerAddress: 'x'.repeat(28) }).ok);
-  assert.ok(validate({ ...SAMPLE, payeeName: 'x'.repeat(25) }).ok, 'primatelj 25');
-  assert.ok(!validate({ ...SAMPLE, payeeName: 'x'.repeat(26) }).ok);
-  assert.ok(validate({ ...SAMPLE, payeeAddress: 'x'.repeat(25) }).ok);
-  assert.ok(!validate({ ...SAMPLE, payeeAddress: 'x'.repeat(26) }).ok);
+  // Namjerno iznad specifikacije (25): stvarne uplatnice prelaze taj limit, a
+  // banke ih prihvaćaju. Vidi komentar uz LIMITS.
+  assert.ok(validate({ ...SAMPLE, payeeName: 'x'.repeat(35) }).ok, 'primatelj 35');
+  assert.ok(!validate({ ...SAMPLE, payeeName: 'x'.repeat(36) }).ok);
+  assert.ok(validate({ ...SAMPLE, payeeAddress: 'x'.repeat(35) }).ok);
+  assert.ok(!validate({ ...SAMPLE, payeeAddress: 'x'.repeat(36) }).ok);
   assert.ok(validate({ ...SAMPLE, payeeCity: 'x'.repeat(27) }).ok);
   assert.ok(!validate({ ...SAMPLE, payeeCity: 'x'.repeat(28) }).ok);
   assert.ok(validate({ ...SAMPLE, reference: '1'.repeat(22) }).ok);
