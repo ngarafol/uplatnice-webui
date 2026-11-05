@@ -34,6 +34,17 @@ app.use((req, res, next) => {
 // Bez dugog cachea: promjena CSS-a se mora vidjeti odmah, a ETag i dalje daje 304
 // kad se datoteka nije promijenila.
 app.use('/static', express.static(fileURLToPath(new URL('public', import.meta.url)), { etag: true, maxAge: 0 }));
+
+// PDF417 dekoder (zxing-wasm) služi se izravno iz node_modules i učitava se
+// samo na stranici uvoza. Namjerno se ne kopira u public/ — to bi značilo ~1 MB
+// binarne datoteke u gitu bez ikakve koristi.
+app.use(
+  '/vendor/zxing',
+  express.static(fileURLToPath(new URL('node_modules/zxing-wasm/dist', import.meta.url)), {
+    etag: true,
+    maxAge: '365d',
+  }),
+);
 app.use(sessionMiddleware(db));
 app.use(createRouter(db));
 

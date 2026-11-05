@@ -477,7 +477,7 @@ export function listaPage({ uplatnice, user, sazetak, mjesec, uvezeno = 0, today
   });
 }
 
-export function formaPage({ mode, values, user, errors = {}, today = todayIso() }) {
+export function formaPage({ mode, values, user, errors = {}, obavijest, today = todayIso() }) {
   const editing = mode === 'uredi';
   const models = Array.from({ length: 100 }, (_, i) => `HR${String(i).padStart(2, '0')}`);
   const defaultNextDue = values.next_due || today;
@@ -490,6 +490,7 @@ export function formaPage({ mode, values, user, errors = {}, today = todayIso() 
         <h1>${editing ? 'Uredi uplatnicu' : 'Nova uplatnica'}</h1>
       </div>
 
+      ${obavijest ? feedback(obavijest, 'ok') : ''}
       ${errors._ ? feedback(errors._) : ''}
 
       <form method="post" action="${editing ? `/uplatnice/${values.id}` : '/uplatnice'}" class="card form-grid">
@@ -879,6 +880,24 @@ export function uvozPage({ user, greska, greske = [], json = '' }) {
         </form>
       </section>
 
+      <section class="card">
+        <h2>Sa slike barkoda</h2>
+        <p class="muted">
+          Odaberi sliku ili screenshot uplatnice. PDF417 barkod se čita u
+          pregledniku, pa se ne šalje nigdje — a pročitani podaci samo popune
+          obrazac koji zatim pregledaš i spremiš.
+        </p>
+        <p class="field-hint" data-skener-status>Odaberi sliku da bi se barkod pročitao.</p>
+        <label class="field">
+          <span class="field-label">Slika barkoda</span>
+          <input type="file" accept="image/*" data-skener-slika>
+        </label>
+        <form method="post" action="/uplatnice/iz-slike" data-skener-forma hidden>
+          <input type="hidden" name="payload" data-skener-payload>
+          <button class="btn primary" type="submit">Popuni obrazac</button>
+        </form>
+      </section>
+
       <script>
         // Odabrana datoteka se samo prebaci u tekstualno polje, pa server ne
         // mora parsirati multipart — jedan obrazac manje.
@@ -893,6 +912,54 @@ export function uvozPage({ user, greska, greske = [], json = '' }) {
             citac.readAsText(f);
           });
         }
+      </script>
+
+      <script type="module">
+        const status = document.querySelector('[data-skener-status]');
+        const ulaz = document.querySelector('[data-skener-slika]');
+        const forma = document.querySelector('[data-skener-forma]');
+        const skriveno = document.querySelector('[data-skener-payload]');
+
+        // 2400 px je i više nego dovoljno za PDF417, a sprječava da fotografija
+        // od 12 MP pojede stotine megabajta pri crtanju u canvas.
+        const NAJVECA = 2400;
+
+        const nacrtaj = async (datoteka) => {
+          const slika = await createImageBitmap(datoteka);
+          const faktor = slika.width > NAJVECA ? NAJVECA / slika.width : 1;
+          const platno = document.createElement('canvas');
+          platno.width = Math.round(slika.width * faktor);
+          platno.height = Math.round(slika.height * faktor);
+          const kontekst = platno.getContext('2d');
+          kontekst.drawImage(slika, 0, 0, platno.width, platno.height);
+          return kontekst.getImageData(0, 0, platno.width, platno.height);
+        };
+
+        ulaz?.addEventListener('change', async () => {
+          const datoteka = ulaz.files?.[0];
+          if (!datoteka) return;
+
+          forma.hidden = true;
+          status.textContent = 'Čitam barkod…';
+          try {
+            const { readBarcodes, prepareZXingModule } = await import('/vendor/zxing/es/reader/index.js');
+            prepareZXingModule({ overrides: { locateFile: () => '/vendor/zxing/reader/zxing_reader.wasm' } });
+
+            const rezultati = await readBarcodes(await nacrtaj(datoteka), { formats: ['PDF417'] });
+            const pogodak = rezultati.find((r) => (r.text ?? '').startsWith('HRVHUB30'));
+
+            if (!pogodak) {
+              status.textContent = 'Na slici nije nađen HUB 3A barkod.';
+              return;
+            }
+
+            skriveno.value = pogodak.text;
+            forma.hidden = false;
+            status.textContent = 'Barkod pročitan. Klikni "Popuni obrazac" pa provjeri podatke.';
+          } catch (greska) {
+            status.textContent = 'Greška pri čitanju: ' + greska.message;
+          }
+        });
       </script>
     `,
   });

@@ -8,6 +8,7 @@ import {
   isValidIban,
   parseAmount,
   validate,
+  parsePayload,
 } from '../hub3.js';
 import {
   arhivirajNacin,
@@ -200,4 +201,51 @@ test('dužine polja po službenoj uputi (HUB v6, tablica 1)', () => {
   assert.ok(!validate({ ...SAMPLE, reference: '1'.repeat(23) }).ok);
   assert.ok(validate({ ...SAMPLE, description: 'x'.repeat(35) }).ok);
   assert.ok(!validate({ ...SAMPLE, description: 'x'.repeat(36) }).ok);
+});
+
+test('payload: buildPayload pa parsePayload vraća ista polja', () => {
+  const ulaz = {
+    payerName: 'Ivan Ivić',
+    payerAddress: 'Ilica 10',
+    payerCity: 'Zagreb',
+    payeeName: 'Sportska abeceda',
+    payeeAddress: 'bb',
+    payeeCity: 'vzd',
+    iban: 'HR6723600001102219379',
+    model: 'HR00',
+    reference: '122025-1328',
+    amountCents: 4000,
+    currency: 'EUR',
+    purposeCode: '',
+    description: 'clanarina 12/25',
+  };
+  const natrag = parsePayload(buildPayload(ulaz));
+  assert.equal(natrag.amountCents, 4000);
+  assert.equal(natrag.iban, 'HR6723600001102219379');
+  assert.equal(natrag.model, 'HR00');
+  assert.equal(natrag.reference, '122025-1328');
+  // Barkod normalizira tekst u velika slova, pa se imena uspoređuju tako.
+  assert.equal(natrag.payeeName, 'SPORTSKA ABECEDA');
+  assert.equal(natrag.description, 'CLANARINA 12/25');
+});
+
+test('payload: parsePayload odbija ono što nije HUB 3A barkod', () => {
+  assert.throws(() => parsePayload('nije barkod'), /nije HUB 3A/);
+  assert.throws(() => parsePayload('HRVHUB30\nEUR'), /nema svih 14 polja/);
+  assert.throws(
+    () => parsePayload('HRVHUB30\nEUR\n000000000000000\na\nb\nc\nd\ne\nf\nHR1\nHR00\n1\n\nopis'),
+    /Iznos .* nije ispravan/,
+  );
+});
+
+test('payload: parsePayload trpi CRLF i završni novi red', () => {
+  const payload = buildPayload({
+    payerName: 'A B', payerAddress: 'C 1', payerCity: 'D',
+    payeeName: 'E F', payeeAddress: 'G 2', payeeCity: 'H',
+    iban: 'HR6723600001102219379', model: 'HR00', reference: '1-2',
+    amountCents: 12345, currency: 'EUR', purposeCode: '', description: 'x',
+  });
+  const natrag = parsePayload(payload.replace(/\n/g, '\r\n'));
+  assert.equal(natrag.amountCents, 12345);
+  assert.equal(natrag.description, 'X');
 });

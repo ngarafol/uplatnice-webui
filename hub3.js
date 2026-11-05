@@ -174,6 +174,61 @@ export function validate(input) {
   return { ok: errors.length === 0, errors, fields: errors.length === 0 ? fields : null };
 }
 
+/**
+ * Raščlani HUB 3A payload natrag u polja — suprotno od buildPayload().
+ *
+ * Zove se na sadržaj pročitan s TUĐEG barkoda, pa se ne smije pretpostaviti da
+ * je ispravan: svaki oblik greške baca iznimku koju pozivatelj hvata.
+ */
+export function parsePayload(tekst) {
+  const redovi = String(tekst ?? '').replace(/\r\n?/g, '\n').split('\n');
+
+  if (redovi[0]?.trim() !== HEADER) {
+    throw new Error('Ovo nije HUB 3A barkod.');
+  }
+  if (redovi.length < 14) {
+    throw new Error('Barkod nema svih 14 polja.');
+  }
+
+  const [
+    ,
+    currency,
+    iznos,
+    payerName,
+    payerAddress,
+    payerCity,
+    payeeName,
+    payeeAddress,
+    payeeCity,
+    iban,
+    model,
+    reference,
+    purposeCode,
+    description,
+  ] = redovi;
+
+  const amountCents = Number.parseInt(iznos, 10);
+  if (!Number.isInteger(amountCents) || amountCents <= 0) {
+    throw new Error('Iznos u barkodu nije ispravan.');
+  }
+
+  return {
+    currency: String(currency ?? '').trim(),
+    amountCents,
+    payerName: payerName ?? '',
+    payerAddress: payerAddress ?? '',
+    payerCity: payerCity ?? '',
+    payeeName: payeeName ?? '',
+    payeeAddress: payeeAddress ?? '',
+    payeeCity: payeeCity ?? '',
+    iban: String(iban ?? '').trim(),
+    model: String(model ?? '').trim(),
+    reference: String(reference ?? '').trim(),
+    purposeCode: String(purposeCode ?? '').trim(),
+    description: String(description ?? '').trim(),
+  };
+}
+
 /** Gradi PDF417 payload. Baca grešku s popisom problema ako uplatnica nije ispravna. */
 export function buildPayload(input) {
   const { ok, errors, fields } = validate(input);

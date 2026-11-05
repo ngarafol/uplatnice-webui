@@ -40,7 +40,8 @@ Tamni način prati OS postavku, a odabir se pamti:
 
 ## Stack
 
-Namjerno mali broj pokretnih dijelova: **dvije runtime ovisnosti**, jedan proces,
+Namjerno mali broj pokretnih dijelova: **tri runtime ovisnosti** (treća se učitava
+samo u pregledniku, na stranici uvoza), jedan proces,
 jedan fajl baze.
 
 | sloj | izbor | zašto |
@@ -50,6 +51,7 @@ jedan fajl baze.
 | baza | SQLite, jedan fajl, WAL | za nekoliko korisnika i desetke uplatnica |
 | migracije | `ensureColumn()` u `db.js` | idempotentne, bez frameworka |
 | barkod | [bwip-js](https://github.com/metafloor/bwip-js) | PDF417 → SVG, bez native builda |
+| čitanje barkoda | [zxing-wasm](https://github.com/Sec-ant/zxing-wasm) | PDF417 dekoder, WASM, samo u pregledniku |
 | UI | server-rendered HTML | bez SPA, bez bundlera, bez build stepa |
 | predlošci | `html\`...\`` u `html.js` | automatski escapea interpolacije (anti-XSS) |
 | lozinke | `scrypt` (`node:crypto`) | bez bcrypt/argon2 ovisnosti |
@@ -167,6 +169,21 @@ datoteke nema, `make release` stane prije tagiranja.
 
 Izmjena zapisa nakon objave: workflow **Zapisi izdanja** prepiše tekstove svih
 objavljenih verzija iz tih datoteka.
+
+### Sa slike barkoda
+
+Na stranici **Uvezi** možeš odabrati sliku ili screenshot uplatnice. PDF417
+barkod se čita **u pregledniku** (zxing-wasm), pa se slika nigdje ne šalje;
+pročitani podaci samo popune obrazac koji zatim pregledaš i spremiš.
+
+Tri stvari utječu na to hoće li se barkod pročitati:
+
+- **tihi pojas** — barkod mora imati bijeli rub oko sebe; ako ga nema, dekoder
+  ga ne nađe ni uz savršenu sliku
+- **razlučivost** — screenshot PDF-a je siguran, mutna fotografija nije
+- **format** — traži se HUB 3A barkod (`HRVHUB30`); drugi barkodovi se ignoriraju
+
+Platitelj iz barkoda se ignorira: u novu uplatnicu ide tvoj profil.
 
 ## Oznake u opisu i pozivu na broj
 

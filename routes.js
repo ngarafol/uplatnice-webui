@@ -3,7 +3,7 @@
  * jer nitko ga još ne zove.
  */
 import express from 'express';
-import { buildPayload, formatAmount, LIMITS, parseAmount, validate } from './hub3.js';
+import { buildPayload, formatAmount, LIMITS, parseAmount, parsePayload, validate } from './hub3.js';
 import { pdf417svg } from './barcode.js';
 import { exportFile, parseExportFile } from './izvoz.js';
 import { imaOznake, razrijesiPredlozak, razrijesiUplatnicu } from './predlozak.js';
@@ -427,6 +427,41 @@ export function createRouter(db) {
 
   router.get('/uplatnice/uvoz', requireLogin, (req, res) => {
     send(res, uvozPage({ user: req.user }));
+  });
+
+  // Barkod se dekodira u pregledniku (canvas + zxing-wasm); ovamo dolazi već
+  // pročitani payload. Forma se samo popuni — spremanje ide kroz uobičajeni
+  // POST /uplatnice, pa nema puta koji zaobiđe validaciju.
+  router.post('/uplatnice/iz-slike', requireLogin, (req, res) => {
+    let procitano;
+    try {
+      procitano = parsePayload(String(req.body.payload ?? ''));
+    } catch (greska) {
+      return send(res, uvozPage({ user: req.user, greska: `Barkod nije pročitan: ${greska.message}` }), 400);
+    }
+
+    const values = {
+      label: procitano.payeeName,
+      prim_name: procitano.payeeName,
+      prim_address: procitano.payeeAddress,
+      prim_city: procitano.payeeCity,
+      iban: procitano.iban,
+      model: procitano.model || 'HR00',
+      poziv_na_broj: procitano.reference,
+      iznos: formatAmount(procitano.amountCents),
+      sifra_namjene: procitano.purposeCode,
+      opis: procitano.description,
+      interval_unit: '',
+      interval_count: 1,
+      next_due: '',
+    };
+
+    send(res, formaPage({
+      mode: 'nova',
+      values,
+      user: req.user,
+      obavijest: 'Podaci su pročitani s barkoda — provjeri ih prije spremanja.',
+    }));
   });
 
   router.post('/uplatnice/uvoz', requireLogin, (req, res) => {
