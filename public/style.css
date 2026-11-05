@@ -472,3 +472,14 @@ fieldset legend { padding: 0 6px; color: var(--muted); font-size: 13px; }
   font-size: 12px;
   color: var(--muted);
 }
+
+/* Adresa kalendara: dugačka, mora se moći prelomiti i označiti. */
+.kalendar-url {
+  word-break: break-all;
+  user-select: all;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: 13px;
+}

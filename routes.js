@@ -2,10 +2,12 @@
  * Sve rute. Server-rendered: POST → redirect → GET (PRG), nema JSON API-ja
  * jer nitko ga još ne zove.
  */
+import { randomBytes } from 'node:crypto';
 import express from 'express';
 import { buildPayload, formatAmount, LIMITS, parseAmount, parsePayload, validate } from './hub3.js';
 import { pdf417svg } from './barcode.js';
 import { exportFile, parseExportFile } from './izvoz.js';
+import { generirajKalendar } from './kalendar.js';
 import { imaOznake, razrijesiPredlozak, razrijesiUplatnicu } from './predlozak.js';
 import { MIN_PASSWORD_LENGTH, clearSession, hashPassword, issueSession, requireLogin, verifyPassword } from './auth.js';
 import {
@@ -315,16 +317,42 @@ export function createRouter(db) {
   // Stari linkovi na /profil ne smiju pasti.
   router.get('/profil', requireLogin, (req, res) => res.redirect(303, '/postavke'));
 
+  // Kalendar ne može poslati prijavu, pa se feed dohvaća preko tajnog tokena.
+  // Token se stvori lijeno, da stare korisnike ne treba migrirati.
+  const kalendarUrl = (req) => {
+    let token = req.user.calendar_token;
+    if (!token) {
+      token = randomBytes(16).toString('hex');
+      db.prepare('UPDATE user SET calendar_token = ? WHERE id = ?').run(token, req.user.id);
+      req.user.calendar_token = token;
+    }
+    return `${req.protocol}://${req.get('host')}/uplatnice.ics?token=${token}`;
+  };
+
   const postavkeStranica = (req, extra = {}) =>
     postavkePage({
       values: req.user,
       user: req.user,
       nacini: naciniKorisnika(db, req.user.id),
+      kalendarUrl: kalendarUrl(req),
       ...extra,
     });
 
   router.get('/postavke', requireLogin, (req, res) => {
-    send(res, postavkeStranica(req, { poruka: req.query.spremljeno ? 'Podaci su spremljeni.' : '' }));
+    const poruka = req.query.kalendar
+      ? 'Nova adresa kalendara je postavljena — stara više ne radi.'
+      : req.query.spremljeno
+        ? 'Podaci su spremljeni.'
+        : '';
+    send(res, postavkeStranica(req, { poruka }));
+  });
+
+  router.post('/postavke/kalendar', requireLogin, (req, res) => {
+    db.prepare('UPDATE user SET calendar_token = ? WHERE id = ?').run(
+      randomBytes(16).toString('hex'),
+      req.user.id,
+    );
+    res.redirect(303, '/postavke?kalendar=1');
   });
 
   router.post('/postavke', requireLogin, (req, res) => {
@@ -412,6 +440,29 @@ export function createRouter(db) {
       }
     }
     send(res, formaPage({ mode: 'nova', values, user: req.user }));
+  });
+
+  // Bez prijave: kalendarske aplikacije ne šalju kolačiće. Token je tajna.
+  router.get('/uplatnice.ics', (req, res) => {
+    const token = String(req.query.token ?? '').trim();
+    const korisnik = token
+      ? db.prepare('SELECT id FROM user WHERE calendar_token = ?').get(token)
+      : null;
+
+    if (!korisnik) {
+      return res.status(404).type('text/plain; charset=utf-8').send('Nepoznata adresa kalendara.');
+    }
+
+    const ponavljajuce = db
+      .prepare(
+        `SELECT * FROM uplatnica
+          WHERE owner_id = ? AND archived = 0 AND interval_unit IS NOT NULL AND next_due IS NOT NULL
+          ORDER BY next_due`,
+      )
+      .all(korisnik.id);
+
+    res.set('Cache-Control', 'no-store');
+    res.type('text/calendar; charset=utf-8').send(generirajKalendar(ponavljajuce));
   });
 
   router.get('/uplatnice/izvoz', requireLogin, (req, res) => {

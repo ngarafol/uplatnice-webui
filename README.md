@@ -103,6 +103,26 @@ Isto radi s Podmanom — zamijeni `docker` s `podman`.
 Baza živi u imenovanom volumenu `uplatnice-data`, pa preživljava brisanje
 kontejnera i obnovu slike.
 
+#### Na serveru (compose)
+
+Ako aplikacija stalno radi negdje (kućni server, NAS, VM), `compose.yaml` je
+čitljiviji od dugačkog `docker run` i — važnije — kontejner **preživljava
+restart hosta**:
+
+```bash
+cp .env.example .env          # SESSION_SECRET
+docker compose up -d
+docker compose ps             # pokaže i "healthy"
+```
+
+Novija verzija: promijeni broj slike u `compose.yaml`, pa
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+`make release` sam uskladi broj slike u `compose.yaml`, da se pin ne zaboravi.
+
 #### Gradnja iz izvora
 
 Ako želiš sam graditi (ili mijenjati kod), `Dockerfile` je standardan pa rade i
@@ -184,6 +204,20 @@ Tri stvari utječu na to hoće li se barkod pročitati:
 - **format** — traži se HUB 3A barkod (`HRVHUB30`); drugi barkodovi se ignoriraju
 
 Platitelj iz barkoda se ignorira: u novu uplatnicu ide tvoj profil.
+
+## Podsjetnici u kalendaru
+
+Na **Postavkama** stoji adresa oblika
+`https://tvoja-domena/uplatnice.ics?token=…`. Pretplatiš se na nju u Google ili
+Apple kalendaru i dospijeća ponavljajućih uplatnica dolaze kao događaji, svaki s
+podsjetnikom **dan prije**.
+
+- feed sadrži sljedeća **tri** dospijeća po uplatnici — kalendar se osvježava
+  rijetko, pa jedno dospijeće ne bi bilo dovoljno
+- adresa je **tajna**: kalendarske aplikacije ne mogu se prijaviti, pa token
+  zamjenjuje lozinku. Kome pošalješ adresu, taj vidi tvoj kalendar.
+- gumb **„Nova adresa"** gasi staru
+- nema maila, nema pružatelja, nema troška
 
 ## Oznake u opisu i pozivu na broj
 

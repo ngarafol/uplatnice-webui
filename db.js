@@ -95,6 +95,8 @@ export function openDb(path = process.env.DB_PATH ?? 'data/uplatnice.db') {
   ensureColumn(db, 'placanje', 'nacin_id', 'INTEGER REFERENCES nacin_placanja(id) ON DELETE SET NULL');
   ensureColumn(db, 'nacin_placanja', 'archived', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn(db, 'placanje', 'prethodni_due', 'TEXT');
+  // Tajna adresa za pretplatu na kalendar; kalendar ne može poslati cookie.
+  ensureColumn(db, 'user', 'calendar_token', 'TEXT');
   return db;
 }
 

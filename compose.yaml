@@ -1,0 +1,30 @@
+# Pokretanje na serveru (Docker ili Podman s compose):
+#   cp .env.example .env      # i upiši SESSION_SECRET
+#   docker compose up -d
+#
+# Novija verzija: promijeni broj slike, pa
+#   docker compose pull && docker compose up -d
+services:
+  uplatnice:
+    # Namjerno prikvačena verzija: `latest` bi na svaki `pull` tiho donio drugu
+    # sliku na server koji obrađuje novac.
+    image: ghcr.io/ngarafol/uplatnice-webui:0.4.0
+    container_name: uplatnice
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - uplatnice-data:/app/data
+    # Provjera je u composeu, ne u slici: u slici je smetala Podmanu na macOS-u,
+    # a ovdje Dockeru radi kako treba i `docker compose ps` pokaže je li živa.
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/prijava"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  uplatnice-data:

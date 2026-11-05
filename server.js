@@ -6,6 +6,8 @@ import { createRouter } from './routes.js';
 
 const db = openDb();
 const app = express();
+// Iza Caddyja: bez ovoga bi req.protocol u adresi kalendara bio http.
+app.set('trust proxy', 1);
 
 app.disable('x-powered-by');
 

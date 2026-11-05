@@ -105,6 +105,7 @@ release:
 	@git diff-index --quiet HEAD -- || { echo "Radno stablo nije čisto — prvo commitaj."; exit 1; }
 	@test -f docs/izdanja/v$(VERSION).md || { echo "Nedostaje zapis izdanja: docs/izdanja/v$(VERSION).md"; exit 1; }
 	node -e "const fs=require('fs');for(const f of ['package.json','package-lock.json']){try{const p=JSON.parse(fs.readFileSync(f,'utf8'));p.version='$(VERSION)';fs.writeFileSync(f,JSON.stringify(p,null,2)+'\\n')}catch(e){}}"
+	node -e "const fs=require('fs');const f='compose.yaml';const u=fs.readFileSync(f,'utf8').replace(/uplatnice-webui:[0-9]+\\.[0-9]+\\.[0-9]+/, 'uplatnice-webui:$(VERSION)');fs.writeFileSync(f,u)"
 	git commit -qam "Verzija $(VERSION)"
 	git tag -a v$(VERSION) -m "v$(VERSION)"
 	git push origin main v$(VERSION)

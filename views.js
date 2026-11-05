@@ -692,7 +692,7 @@ export function detaljPage({
     `,
   });
 }
-export function postavkePage({ values, user, errors = {}, nacini = [], poruka, greska }) {
+export function postavkePage({ values, user, errors = {}, nacini = [], poruka, greska, kalendarUrl = '' }) {
   return layout({
     title: 'Postavke',
     user,
@@ -738,6 +738,22 @@ export function postavkePage({ values, user, errors = {}, nacini = [], poruka, g
           <input name="naziv" placeholder="npr. Mobilna banka, Gotovina" required maxlength="40">
           <button class="btn" type="submit">Dodaj način</button>
         </form>
+      </section>
+
+      <section class="card">
+        <h2>Kalendar</h2>
+        <p class="muted">
+          Pretplati se na ovu adresu u Google ili Apple kalendaru. Dospijeća
+          ponavljajućih uplatnica dolaze kao događaji, s podsjetnikom dan prije.
+        </p>
+        <p class="mono kalendar-url">${kalendarUrl}</p>
+        <form method="post" action="/postavke/kalendar">
+          <button class="btn" type="submit">Nova adresa</button>
+        </form>
+        <p class="field-hint">
+          Adresa je tajna — kome je pošalješ, vidi tvoj kalendar. „Nova adresa"
+          gasi staru.
+        </p>
       </section>
     `,
   });
