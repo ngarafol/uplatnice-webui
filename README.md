@@ -240,6 +240,16 @@ poziv na broj:   {MM}{YYYY}-1328                          -> 122025-1328
 Označiš uplatu plaćenom, dospijeće skoči na sljedeći period, pa isti predložak
 sam da `01/26` i `012026-1328`. Ništa se ne tipka ponovno.
 
+**Kontrolni broj (model HR01–HR08).** Ako model traži kontrolnu znamenku, u
+poziv na broj upiši `{KB}`; izračuna se po **MOD11INI** iz znamenaka ostatka
+poziva, pa se mijenja s mjesecom kao i ostalo:
+
+```
+1887{MM}2601-{KB}   ->  listopad: 1887102601-2   studeni: 1887112601-7
+```
+
+`{KB}` radi i bez ponavljanja — kontrolni broj ne treba datum.
+
 - Predložak se čuva u uplatnici; **razriješena** vrijednost ide u barkod, ispis i
   povijest plaćanja (snapshot), da u povijesti ne ostane `{MM}`.
 - Dužina polja provjerava se na razriješenom tekstu, ne na predlošku — predložak

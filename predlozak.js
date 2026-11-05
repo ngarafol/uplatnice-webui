@@ -27,6 +27,29 @@ const vrijednost = {
   YYYY: (datum) => String(datum.getFullYear()),
 };
 
+/**
+ * Kontrolni broj po modulu 11 (MOD11INI) — koristi se u modelima HR01–HR08.
+ * Znamenke se množe težinama 2, 3, 4… zdesna nalijevo (bez gornje granice),
+ * pa je kontrolni broj 11 − (zbroj mod 11); 10 i 11 postaju 0.
+ *
+ * Provjereno na službenom primjeru (2026789 → 4) i na dvije stvarne uplatnice
+ * (1887102601 → 2, 1887112601 → 7).
+ */
+export function mod11ini(brojke) {
+  const znamenke = String(brojke ?? '').replace(/\D/g, '');
+  if (!znamenke) return null;
+
+  let zbroj = 0;
+  let tezina = 2;
+  for (let i = znamenke.length - 1; i >= 0; i -= 1) {
+    zbroj += tezina * Number(znamenke[i]);
+    tezina += 1;
+  }
+
+  const kontrolni = 11 - (zbroj % 11);
+  return kontrolni > 9 ? 0 : kontrolni;
+}
+
 /** Popis oznaka za napomenu u formi. */
 export const OZNAKE = [
   ['{MM}', 'mjesec s vodećom nulom (01–12)'],
@@ -37,6 +60,26 @@ export const OZNAKE = [
 
 /** Ima li tekst ijednu oznaku? */
 export const imaOznake = (tekst) => IMA_UZORAK.test(String(tekst ?? ''));
+
+/** Treba li poziv na broj izračunati kontrolni broj? */
+export const imaKontrolni = (tekst) => String(tekst ?? '').includes('{KB}');
+
+/**
+ * Razriješi poziv na broj: datumski dio pa kontrolni broj.
+ * Kontrolni broj se računa nad znamenkama ostatka poziva — crtice i samu
+ * oznaku `{KB}` pritom ignorira.
+ */
+export function razrijesiPozivNaBroj(tekst, datumIso) {
+  const izvorno = String(tekst ?? '');
+  if (!imaKontrolni(izvorno)) return razrijesiPredlozak(izvorno, datumIso);
+
+  const kontrolni = mod11ini(razrijesiPredlozak(izvorno.replace(/\{KB\}/g, ''), datumIso));
+  // Bez ijedne znamenke nema što izračunati; oznaka ostaje vidljiva i validacija
+  // će ju odbiti, što je bolje od tihe nule.
+  if (kontrolni === null) return izvorno;
+
+  return razrijesiPredlozak(izvorno, datumIso).replace(/\{KB\}/g, String(kontrolni));
+}
 
 /**
  * Zamijeni oznake datumom. Ako datuma nema ili nije ispravan, tekst se vraća
@@ -62,6 +105,6 @@ export function razrijesiUplatnicu(uplatnica) {
   return {
     ...uplatnica,
     opis: razrijesiPredlozak(uplatnica.opis, uplatnica.next_due),
-    poziv_na_broj: razrijesiPredlozak(uplatnica.poziv_na_broj, uplatnica.next_due),
+    poziv_na_broj: razrijesiPozivNaBroj(uplatnica.poziv_na_broj, uplatnica.next_due),
   };
 }

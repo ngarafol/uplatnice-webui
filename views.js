@@ -9,6 +9,8 @@ import { VERZIJA } from './verzija.js';
 
 /** Isti hint za sva polja koja primaju oznake. */
 const OZNAKE_HINT = `Oznake se popune datumom dospijeća: ${OZNAKE.map(([o, opis]) => `${o} ${opis}`).join(' · ')}`;
+/** Kontrolni broj ima smisla samo u pozivu na broj. */
+const POZIV_HINT = `${OZNAKE_HINT} · {KB} kontrolni broj (model HR01–HR08)`;
 import { formatAmount } from './hub3.js';
 import {
   DASHBOARD_WINDOW_DAYS,
@@ -508,7 +510,7 @@ export function formaPage({ mode, values, user, errors = {}, obavijest, today = 
             ${field({ name: 'iban', label: 'IBAN', value: values.iban, required: true, error: errors.iban, attrs: 'placeholder="HR00 0000 0000 0000 0000 0" spellcheck=false maxlength=34' })}
             ${field({ name: 'model', label: 'Model', value: values.model || 'HR00', error: errors.model, attrs: 'list=modeli size=6' })}
             <datalist id="modeli">${models.map((m) => html`<option value="${m}"></option>`)}</datalist>
-            ${field({ name: 'poziv_na_broj', label: 'Poziv na broj', value: values.poziv_na_broj, error: errors.poziv_na_broj, attrs: 'placeholder=1234-5678-901234', hint: OZNAKE_HINT })}
+            ${field({ name: 'poziv_na_broj', label: 'Poziv na broj', value: values.poziv_na_broj, error: errors.poziv_na_broj, attrs: 'placeholder=1234-5678-901234', hint: POZIV_HINT })}
           </div>
         </fieldset>
 
