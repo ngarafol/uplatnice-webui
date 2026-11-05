@@ -17,6 +17,8 @@ import { parseIso } from './recurring.js';
 
 /** Redoslijed je važan: duže oznake prvo, inače `{MM}` pojede `{M}`. */
 const UZORAK = /\{(MM|M|YYYY|YY)\}/g;
+/** Isti uzorak bez `/g` — `.test()` s globalnim regexom pamti `lastIndex`. */
+const IMA_UZORAK = /\{(MM|M|YYYY|YY)\}/;
 
 const vrijednost = {
   M: (datum) => String(datum.getMonth() + 1),
@@ -34,7 +36,7 @@ export const OZNAKE = [
 ];
 
 /** Ima li tekst ijednu oznaku? */
-export const imaOznake = (tekst) => new RegExp(UZORAK.source).test(String(tekst ?? ''));
+export const imaOznake = (tekst) => IMA_UZORAK.test(String(tekst ?? ''));
 
 /**
  * Zamijeni oznake datumom. Ako datuma nema ili nije ispravan, tekst se vraća

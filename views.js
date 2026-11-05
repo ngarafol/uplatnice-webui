@@ -5,6 +5,9 @@
  */
 import { html, raw } from './html.js';
 import { OZNAKE } from './predlozak.js';
+
+/** Isti hint za sva polja koja primaju oznake. */
+const OZNAKE_HINT = `Oznake se popune datumom dospijeća: ${OZNAKE.map(([o, opis]) => `${o} ${opis}`).join(' · ')}`;
 import { formatAmount } from './hub3.js';
 import {
   DASHBOARD_WINDOW_DAYS,
@@ -488,12 +491,9 @@ export function formaPage({ mode, values, user, errors = {}, today = todayIso() 
       ${errors._ ? feedback(errors._) : ''}
 
       <form method="post" action="${editing ? `/uplatnice/${values.id}` : '/uplatnice'}" class="card form-grid">
-        <label class="field span-2">
-          <span class="field-label">Oznaka <span class="req">*</span></span>
-          <input name="label" value="${values.label ?? ''}" required autofocus placeholder="npr. Struja">
-          <span class="field-hint">Samo za tebe — kako prepoznaješ uplatnicu u popisu.</span>
-          ${errors.label ? html`<span class="field-error">${errors.label}</span>` : ''}
-        </label>
+        <div class="span-2">
+          ${field({ name: 'label', label: 'Oznaka', value: values.label, required: true, error: errors.label, hint: 'Samo za tebe — kako prepoznaješ uplatnicu u popisu.', attrs: 'autofocus placeholder="npr. Struja"' })}
+        </div>
 
         <fieldset class="span-2">
           <legend>Primatelj</legend>
@@ -504,7 +504,7 @@ export function formaPage({ mode, values, user, errors = {}, today = todayIso() 
             ${field({ name: 'iban', label: 'IBAN', value: values.iban, required: true, error: errors.iban, attrs: 'placeholder="HR00 0000 0000 0000 0000 0" spellcheck=false maxlength=34' })}
             ${field({ name: 'model', label: 'Model', value: values.model || 'HR00', error: errors.model, attrs: 'list=modeli size=6' })}
             <datalist id="modeli">${models.map((m) => html`<option value="${m}"></option>`)}</datalist>
-            ${field({ name: 'poziv_na_broj', label: 'Poziv na broj', value: values.poziv_na_broj, error: errors.poziv_na_broj, attrs: 'placeholder=1234-5678-901234', hint: 'Možeš upisati ' + OZNAKE.map(([o]) => o).join(' ') + ' — popune se datumom dospijeća.' })}
+            ${field({ name: 'poziv_na_broj', label: 'Poziv na broj', value: values.poziv_na_broj, error: errors.poziv_na_broj, attrs: 'placeholder=1234-5678-901234', hint: OZNAKE_HINT })}
           </div>
         </fieldset>
 
@@ -513,12 +513,9 @@ export function formaPage({ mode, values, user, errors = {}, today = todayIso() 
           <div class="form-grid">
             ${field({ name: 'iznos', label: 'Iznos (EUR)', value: values.iznos, required: true, error: errors.iznos, attrs: `inputmode=decimal placeholder=70,00` })}
             ${field({ name: 'sifra_namjene', label: 'Šifra namjene', value: values.sifra_namjene, error: errors.sifra_namjene, hint: 'Opcionalno, npr. COST.', attrs: 'maxlength=4 placeholder=COST' })}
-            <label class="field span-2">
-              <span class="field-label">Opis plaćanja</span>
-              <input name="opis" value="${values.opis ?? ''}" maxlength="35" placeholder="npr. clanarina {MM}/{YY}">
-              <span class="field-hint">${OZNAKE.map(([o, opis]) => `${o} = ${opis}`).join(' · ')}</span>
-              ${errors.opis ? html`<span class="field-error">${errors.opis}</span>` : ''}
-            </label>
+            <div class="span-2">
+              ${field({ name: 'opis', label: 'Opis plaćanja', value: values.opis, error: errors.opis, hint: OZNAKE_HINT, attrs: 'maxlength=35 placeholder="npr. clanarina {MM}/{YY}"' })}
+            </div>
           </div>
         </fieldset>
 
