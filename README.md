@@ -167,6 +167,35 @@ Tag pokreće GitHub Actions: gradi sliku za `amd64` i `arm64` i pusha je u
 GitHub Release s popisom promjena. Push na `main` bez taga vrti samo testove i
 probnu gradnju.
 
+## Oznake u opisu i pozivu na broj
+
+Kod ponavljajućih uplatnica dio teksta se mijenja svaki period. Umjesto ručnog
+mijenjanja, u **opis** i **poziv na broj** upiši oznake koje se popune datumom
+dospijeća:
+
+| oznaka | za prosinac 2025. |
+|---|---|
+| `{M}` | `12` |
+| `{MM}` | `12` |
+| `{YY}` | `25` |
+| `{YYYY}` | `2025` |
+
+```
+opis:            clanarina Nika Garafolic {MM}/{YY}      -> clanarina Nika Garafolic 12/25
+poziv na broj:   {MM}{YYYY}-1328                          -> 122025-1328
+```
+
+Označiš uplatu plaćenom, dospijeće skoči na sljedeći period, pa isti predložak
+sam da `01/26` i `012026-1328`. Ništa se ne tipka ponovno.
+
+- Predložak se čuva u uplatnici; **razriješena** vrijednost ide u barkod, ispis i
+  povijest plaćanja (snapshot), da u povijesti ne ostane `{MM}`.
+- Dužina polja provjerava se na razriješenom tekstu, ne na predlošku — predložak
+  je duži od rezultata.
+- Oznake traže ponavljanje: kod jednokratne uplatnice nema datuma dospijeća, pa
+  aplikacija odbija snimanje uz objašnjenje.
+- Tekst bez oznaka radi kao i prije.
+
 ## Izvoz i uvoz
 
 Na popisu uplatnica su **Izvezi** i **Uvezi**. Izvoz preuzima `.json` datoteku s

@@ -17,6 +17,14 @@ app.use((req, res, next) => {
 
 app.use(express.urlencoded({ extended: false, limit: '32kb' }));
 
+// Express ostavi req.body undefined kad zahtjev nema tijela (npr. POST bez
+// polja), pa bi svaka ruta koja čita req.body.nesto pukla s 500. Prazan objekt
+// je ispravno "nema poslanih polja".
+app.use((req, res, next) => {
+  req.body ??= {};
+  next();
+});
+
 // HTML se ne smije cachirati: inače preglednik nakon promjene pokazuje staru uplatnicu.
 app.use((req, res, next) => {
   if (!req.path.startsWith('/static/')) res.set('Cache-Control', 'no-store');

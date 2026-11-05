@@ -6,6 +6,7 @@ import express from 'express';
 import { buildPayload, formatAmount, LIMITS, parseAmount, validate } from './hub3.js';
 import { pdf417svg } from './barcode.js';
 import { exportFile, parseExportFile } from './izvoz.js';
+import { imaOznake, razrijesiPredlozak, razrijesiUplatnicu } from './predlozak.js';
 import { MIN_PASSWORD_LENGTH, clearSession, hashPassword, issueSession, requireLogin, verifyPassword } from './auth.js';
 import {
   INTERVAL_UNITS,
@@ -105,6 +106,9 @@ const isIsoDate = (value) =>
 
 /** Sastavlja ulaz za hub3.validate() iz retka uplatnice + profila platitelja. */
 function payloadInput(user, uplatnica) {
+  // Predložak se razrješava ovdje, pa je ovo jedino mjesto koje zna kako zapis
+  // postaje barkod — vrijedi za detalj, .svg, ispis i validaciju.
+  const u = razrijesiUplatnicu(uplatnica);
   return {
     payerName: user.name,
     payerAddress: user.address,
@@ -114,11 +118,11 @@ function payloadInput(user, uplatnica) {
     payeeCity: uplatnica.prim_city,
     iban: uplatnica.iban,
     model: uplatnica.model,
-    reference: uplatnica.poziv_na_broj,
+    reference: u.poziv_na_broj,
     amountCents: uplatnica.iznos_cents,
     currency: 'EUR',
     purposeCode: uplatnica.sifra_namjene,
-    description: uplatnica.opis,
+    description: u.opis,
   };
 }
 
@@ -168,11 +172,19 @@ function readUplatnicaForm(body, user) {
     values.next_due = '';
   }
 
+  // {MM} i slično pune se datumom dospijeća; bez ponavljanja nema čime.
+  if (!recurring) {
+    const poruka = 'Oznaka poput {MM} popunjava se datumom dospijeća — označi uplatnicu kao ponavljajuću.';
+    if (imaOznake(values.opis)) errors.opis = poruka;
+    if (imaOznake(values.poziv_na_broj)) errors.poziv_na_broj = poruka;
+  }
+
   if (!values.label) errors.label = 'Oznaka je obavezna.';
 
   // Ista imena polja kao u bazi: payloadInput() je jedino mjesto koje zna kako
   // se zapis prevodi u barkod, pa se ovdje ne smiju koristiti imena iz validate().
   const candidate = {
+    next_due: values.next_due,
     prim_name: values.prim_name,
     prim_address: values.prim_address,
     prim_city: values.prim_city,
@@ -361,7 +373,7 @@ export function createRouter(db) {
     send(
       res,
       dashboardPage({
-        uplatnice: uplatniceZaKorisnika(db, req.user.id),
+        uplatnice: uplatniceZaKorisnika(db, req.user.id).map(razrijesiUplatnicu),
         user: req.user,
         ...sazetakZa(req),
       }),
@@ -372,7 +384,7 @@ export function createRouter(db) {
     send(
       res,
       listaPage({
-        uplatnice: uplatniceZaKorisnika(db, req.user.id),
+        uplatnice: uplatniceZaKorisnika(db, req.user.id).map(razrijesiUplatnicu),
         user: req.user,
         uvezeno: Number(req.query.uvezeno) || 0,
         ...sazetakZa(req),
@@ -518,7 +530,7 @@ export function createRouter(db) {
     send(
       res,
       detaljPage({
-        uplatnica: req.uplatnica,
+        uplatnica: razrijesiUplatnicu(req.uplatnica),
         payments,
         user: req.user,
         natrag: backFrom(req, '/uplatnice'),
@@ -543,7 +555,7 @@ export function createRouter(db) {
       const payload = buildPayload(payloadInput(req.user, req.uplatnica));
       send(
         res,
-        ispisPage({ uplatnica: req.uplatnica, user: req.user, barcodeSvg: pdf417svg(payload) }),
+        ispisPage({ uplatnica: razrijesiUplatnicu(req.uplatnica), user: req.user, barcodeSvg: pdf417svg(payload) }),
       );
     } catch (e) {
       send(res, errorPage({ user: req.user, title: 'Ispis nije moguć', message: e.message }), 500);
@@ -579,7 +591,7 @@ export function createRouter(db) {
     send(
       res,
       platiPage({
-        uplatnica: req.uplatnica,
+        uplatnica: razrijesiUplatnicu(req.uplatnica),
         user: req.user,
         nacini: naciniKorisnika(db, req.user.id),
         povratak: backTo(req.query.povratak, `/uplatnice/${req.uplatnica.id}`),
@@ -606,7 +618,7 @@ export function createRouter(db) {
       uplatnica.id,
       now,
       uplatnica.iznos_cents,
-      uplatnica.poziv_na_broj,
+      razrijesiPredlozak(uplatnica.poziv_na_broj, uplatnica.next_due),
       nacin?.id ?? null,
       uplatnica.next_due,
     );

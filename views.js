@@ -4,6 +4,7 @@
  * generiramo sami.
  */
 import { html, raw } from './html.js';
+import { OZNAKE } from './predlozak.js';
 import { formatAmount } from './hub3.js';
 import {
   DASHBOARD_WINDOW_DAYS,
@@ -503,7 +504,7 @@ export function formaPage({ mode, values, user, errors = {}, today = todayIso() 
             ${field({ name: 'iban', label: 'IBAN', value: values.iban, required: true, error: errors.iban, attrs: 'placeholder="HR00 0000 0000 0000 0000 0" spellcheck=false maxlength=34' })}
             ${field({ name: 'model', label: 'Model', value: values.model || 'HR00', error: errors.model, attrs: 'list=modeli size=6' })}
             <datalist id="modeli">${models.map((m) => html`<option value="${m}"></option>`)}</datalist>
-            ${field({ name: 'poziv_na_broj', label: 'Poziv na broj', value: values.poziv_na_broj, error: errors.poziv_na_broj, attrs: 'placeholder=1234-5678-901234' })}
+            ${field({ name: 'poziv_na_broj', label: 'Poziv na broj', value: values.poziv_na_broj, error: errors.poziv_na_broj, attrs: 'placeholder=1234-5678-901234', hint: 'Možeš upisati ' + OZNAKE.map(([o]) => o).join(' ') + ' — popune se datumom dospijeća.' })}
           </div>
         </fieldset>
 
@@ -514,7 +515,8 @@ export function formaPage({ mode, values, user, errors = {}, today = todayIso() 
             ${field({ name: 'sifra_namjene', label: 'Šifra namjene', value: values.sifra_namjene, error: errors.sifra_namjene, hint: 'Opcionalno, npr. COST.', attrs: 'maxlength=4 placeholder=COST' })}
             <label class="field span-2">
               <span class="field-label">Opis plaćanja</span>
-              <input name="opis" value="${values.opis ?? ''}" maxlength="35" placeholder="npr. Uplata za 11. mjesec">
+              <input name="opis" value="${values.opis ?? ''}" maxlength="35" placeholder="npr. clanarina {MM}/{YY}">
+              <span class="field-hint">${OZNAKE.map(([o, opis]) => `${o} = ${opis}`).join(' · ')}</span>
               ${errors.opis ? html`<span class="field-error">${errors.opis}</span>` : ''}
             </label>
           </div>
