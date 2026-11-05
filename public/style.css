@@ -462,3 +462,13 @@ fieldset legend { padding: 0 6px; color: var(--muted); font-size: 13px; }
   font-size: 14px;
 }
 .field textarea { resize: vertical; min-height: 160px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+
+/* Verzija u podnožju — da se iz sučelja vidi koja slika radi. */
+.footer {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 28px 28px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}

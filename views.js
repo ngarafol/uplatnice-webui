@@ -5,6 +5,7 @@
  */
 import { html, raw } from './html.js';
 import { OZNAKE } from './predlozak.js';
+import { VERZIJA } from './verzija.js';
 
 /** Isti hint za sva polja koja primaju oznake. */
 const OZNAKE_HINT = `Oznake se popune datumom dospijeća: ${OZNAKE.map(([o, opis]) => `${o} ${opis}`).join(' · ')}`;
@@ -109,6 +110,7 @@ export function layout({ title, user, body }) {
   <main class="wrap">
     ${body}
   </main>
+  <footer class="footer">Uplatnice v${VERZIJA}</footer>
   <script>
     for (const form of document.querySelectorAll('form[data-confirm]')) {
       form.addEventListener('submit', (event) => {

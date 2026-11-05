@@ -103,8 +103,10 @@ release:
 	@test -n "$(VERSION)" || { echo "Koristi: make release VERSION=1.0.0"; exit 1; }
 	@echo "$(VERSION)" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$$' || { echo "Verzija mora biti oblika x.y.z"; exit 1; }
 	@git diff-index --quiet HEAD -- || { echo "Radno stablo nije čisto — prvo commitaj."; exit 1; }
+	node -e "const fs=require('fs');for(const f of ['package.json','package-lock.json']){try{const p=JSON.parse(fs.readFileSync(f,'utf8'));p.version='$(VERSION)';fs.writeFileSync(f,JSON.stringify(p,null,2)+'\\n')}catch(e){}}"
+	git commit -qam "Verzija $(VERSION)"
 	git tag -a v$(VERSION) -m "v$(VERSION)"
-	git push origin v$(VERSION)
+	git push origin main v$(VERSION)
 	@echo "Tag v$(VERSION) poslan. Gradnja: GitHub Actions -> Releases -> slika ghcr.io" 
 
 clean:
