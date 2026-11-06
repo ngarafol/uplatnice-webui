@@ -504,8 +504,8 @@ export function formaPage({ mode, values, user, errors = {}, obavijest, today = 
         <fieldset class="span-2">
           <legend>Primatelj</legend>
           <div class="form-grid">
-            ${field({ name: 'prim_name', label: 'Naziv / ime', value: values.prim_name, required: true, error: errors.prim_name, attrs: 'maxlength=35' })}
-            ${field({ name: 'prim_address', label: 'Adresa (ulica i broj)', value: values.prim_address, required: true, error: errors.prim_address, attrs: 'maxlength=35 placeholder="npr. Ilica 10"' })}
+            ${field({ name: 'prim_name', label: 'Naziv / ime', value: values.prim_name, required: true, error: errors.prim_name, attrs: 'maxlength=50' })}
+            ${field({ name: 'prim_address', label: 'Adresa (ulica i broj)', value: values.prim_address, required: true, error: errors.prim_address, attrs: 'maxlength=50 placeholder="npr. Ilica 10"' })}
             ${field({ name: 'prim_city', label: 'Poštanski broj i mjesto', value: values.prim_city, required: true, error: errors.prim_city, attrs: 'maxlength=27 placeholder="npr. 10000 Zagreb"' })}
             ${field({ name: 'iban', label: 'IBAN', value: values.iban, required: true, error: errors.iban, attrs: 'placeholder="HR00 0000 0000 0000 0000 0" spellcheck=false maxlength=34' })}
             ${field({ name: 'model', label: 'Model', value: values.model || 'HR00', error: errors.model, attrs: 'list=modeli size=6' })}

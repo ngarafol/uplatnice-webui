@@ -34,11 +34,12 @@ const LIMITS = {
   payerName: 30,
   payerAddress: 27,
   payerCity: 27,
-  // ponytail: naziv i adresa primatelja 35 umjesto propisanih 25. Stvarne
-  // uplatnice to prelaze (vrtić: naziv 27, adresa 32) i banke ih prihvaćaju pri
-  // skeniranju. Ako koja aplikacija počne odbijati barkod, vrati na 25.
-  payeeName: 35,
-  payeeAddress: 35,
+  // ponytail: naziv i adresa primatelja 50 umjesto propisanih 25. Stvarne
+  // uplatnice to prelaze (vrtić: naziv 27, adresa 32; škola: naziv 25+) i banke
+  // ih prihvaćaju pri skeniranju. Ako koja aplikacija počne odbijati barkod,
+  // spuštati dok ne proradi — spec traži 25.
+  payeeName: 50,
+  payeeAddress: 50,
   payeeCity: 27,
   reference: 22,
   description: 35,

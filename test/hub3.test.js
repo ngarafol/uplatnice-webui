@@ -107,7 +107,7 @@ test('validacija odbija neispravne uplatnice umjesto da ih tiho skrati', () => {
   assert.ok(!validate({ ...SAMPLE, iban: 'HR0000000000000000000' }).ok);
   assert.ok(!validate({ ...SAMPLE, amountCents: 0 }).ok);
   assert.ok(!validate({ ...SAMPLE, model: 'X99' }).ok);
-  assert.ok(!validate({ ...SAMPLE, payeeName: 'x'.repeat(36) }).ok, 'predugo ime se odbija');
+  assert.ok(!validate({ ...SAMPLE, payeeName: 'x'.repeat(51) }).ok, 'predugo ime se odbija');
   assert.ok(!validate({ ...SAMPLE, reference: '1511-ABC' }).ok, 'slova u pozivu na broj');
   assert.equal(
     validate({ ...SAMPLE, reference: '1511 111' }).fields.reference,
@@ -193,10 +193,10 @@ test('dužine polja po službenoj uputi (HUB v6, tablica 1)', () => {
   assert.ok(!validate({ ...SAMPLE, payerAddress: 'x'.repeat(28) }).ok);
   // Namjerno iznad specifikacije (25): stvarne uplatnice prelaze taj limit, a
   // banke ih prihvaćaju. Vidi komentar uz LIMITS.
-  assert.ok(validate({ ...SAMPLE, payeeName: 'x'.repeat(35) }).ok, 'primatelj 35');
-  assert.ok(!validate({ ...SAMPLE, payeeName: 'x'.repeat(36) }).ok);
-  assert.ok(validate({ ...SAMPLE, payeeAddress: 'x'.repeat(35) }).ok);
-  assert.ok(!validate({ ...SAMPLE, payeeAddress: 'x'.repeat(36) }).ok);
+  assert.ok(validate({ ...SAMPLE, payeeName: 'x'.repeat(50) }).ok, 'primatelj 50');
+  assert.ok(!validate({ ...SAMPLE, payeeName: 'x'.repeat(51) }).ok);
+  assert.ok(validate({ ...SAMPLE, payeeAddress: 'x'.repeat(50) }).ok);
+  assert.ok(!validate({ ...SAMPLE, payeeAddress: 'x'.repeat(51) }).ok);
   assert.ok(validate({ ...SAMPLE, payeeCity: 'x'.repeat(27) }).ok);
   assert.ok(!validate({ ...SAMPLE, payeeCity: 'x'.repeat(28) }).ok);
   assert.ok(validate({ ...SAMPLE, reference: '1'.repeat(22) }).ok);
