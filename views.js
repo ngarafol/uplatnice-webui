@@ -79,6 +79,7 @@ export function layout({ title, user, body }) {
           ? saved === 'tamna'
           : matchMedia('(prefers-color-scheme: dark)').matches;
         document.documentElement.dataset.theme = dark ? 'tamna' : 'svjetla';
+        document.documentElement.dataset.kodPregled = localStorage.getItem('kod-pregled') ?? 'da';
       } catch {
         document.documentElement.dataset.theme = 'svjetla';
       }
@@ -115,6 +116,16 @@ export function layout({ title, user, body }) {
   </main>
   <footer class="footer">Uplatnice v${VERZIJA}</footer>
   <script>
+    // Slika koda se ne dohvaća dok se prvi put ne prijeđe mišem — inače bi popis
+    // s dvadeset uplatnica tražio dvadeset SVG-ova odmah.
+    for (const kutija of document.querySelectorAll('.kod-hover')) {
+      const slika = kutija.querySelector('img[data-src]');
+      if (!slika) continue;
+      const ucitaj = () => { slika.src = slika.dataset.src; };
+      kutija.addEventListener('pointerenter', ucitaj, { once: true });
+      kutija.addEventListener('focusin', ucitaj, { once: true });
+    }
+
     for (const form of document.querySelectorAll('form[data-confirm]')) {
       form.addEventListener('submit', (event) => {
         if (!confirm(form.dataset.confirm)) event.preventDefault();
@@ -388,7 +399,12 @@ const uplatnicaRow = (uplatnica, today, povratak) => html`
             ${uplatnica.is_owner
               ? html`<a class="btn small" href="/uplatnice/${uplatnica.id}/uredi">Uredi</a>`
               : ''}
-            <a class="btn small" href="/uplatnice/${uplatnica.id}#barkod">Kod</a>
+            <span class="kod-hover">
+              <a class="btn small" href="/uplatnice/${uplatnica.id}#barkod">Kod</a>
+              <span class="kod-pregled">
+                <img data-src="/uplatnice/${uplatnica.id}/barkod.svg" alt="Kod za plaćanje ${uplatnica.label}" width="700" height="254">
+              </span>
+            </span>
             <a class="btn small" href="/uplatnice/${uplatnica.id}/plati?povratak=${encodeURIComponent(povratak)}">Plaćeno</a>
             ${uplatnica.is_owner
               ? html`<form method="post" action="/uplatnice/${uplatnica.id}/arhiviraj"
@@ -758,6 +774,28 @@ export function postavkePage({ values, user, errors = {}, nacini = [], poruka, g
           gasi staru.
         </p>
       </section>
+
+      <section class="card">
+        <h2>Prikaz</h2>
+        <label class="check">
+          <input type="checkbox" data-kod-postavka>
+          <span>Prikaži kod za plaćanje kad prijeđem mišem preko gumba „Kod"</span>
+        </label>
+        <p class="field-hint">
+          Vrijedi za ovaj preglednik. Na telefonu se kod prikazuje na stranici uplatnice.
+        </p>
+      </section>
+
+      <script>
+        const kodPostavka = document.querySelector('[data-kod-postavka]');
+        if (kodPostavka) {
+          kodPostavka.checked = (localStorage.getItem('kod-pregled') ?? 'da') === 'da';
+          kodPostavka.addEventListener('change', () => {
+            localStorage.setItem('kod-pregled', kodPostavka.checked ? 'da' : 'ne');
+            document.documentElement.dataset.kodPregled = kodPostavka.checked ? 'da' : 'ne';
+          });
+        }
+      </script>
     `,
   });
 }

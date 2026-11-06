@@ -483,3 +483,28 @@ fieldset legend { padding: 0 6px; color: var(--muted); font-size: 13px; }
   background: var(--surface-2);
   font-size: 13px;
 }
+
+/* Pregled koda na prelazak mišem — namjerno velik: mobitel mora moći pročitati
+   barkod s ekrana, a PDF417 traži barem ~3 px po modulu. */
+.kod-hover { position: relative; display: inline-block; }
+.kod-pregled {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  padding: 12px;
+  background: #fff; /* barkod mora biti na bijelom, i u tamnoj temi */
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+}
+html[data-kod-pregled='da'] .kod-hover:hover .kod-pregled,
+html[data-kod-pregled='da'] .kod-hover:focus-within .kod-pregled {
+  display: block;
+}
+.kod-pregled img { display: block; width: 700px; max-width: calc(100vw - 48px); height: auto; }
+
+/* Potvrdni okvir u Postavkama. */
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; cursor: pointer; }
+.check input { margin: 3px 0 0; accent-color: var(--primary); }
