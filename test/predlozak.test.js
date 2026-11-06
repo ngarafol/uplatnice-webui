@@ -73,3 +73,28 @@ test('kontrolni broj: razrijesiUplatnicu računa KB samo u pozivu', () => {
   assert.equal(u.poziv_na_broj, '1887112601-7');
   assert.equal(u.opis, 'clanarina 11/26', 'u opisu nema računanja');
 });
+
+test('pomak: {MM-1} daje prethodni mjesec', () => {
+  assert.equal(razrijesiPredlozak('{MM-1}/{YY}', '2026-11-20'), '10/26');
+  assert.equal(razrijesiPredlozak('{M-1}', '2026-11-20'), '10');
+  assert.equal(razrijesiPredlozak('{MM+1}', '2026-11-20'), '12');
+});
+
+test('pomak: prelazak godine ide s pomaknutim datumom', () => {
+  // U siječnju prethodni mjesec je prosinac PRETHODNE godine.
+  assert.equal(razrijesiPredlozak('{MM-1}/{YY-1}', '2026-01-15'), '12/25');
+  assert.equal(razrijesiPredlozak('{MM-1}/{YYYY-1}', '2026-01-15'), '12/2025');
+  assert.equal(razrijesiPredlozak('{MM+1}/{YY+1}', '2026-12-15'), '01/27');
+});
+
+test('pomak: kraj mjeseca ne „preskoči" mjesec', () => {
+  // 31. ožujka minus mjesec je veljača, ne 3. ožujka.
+  assert.equal(razrijesiPredlozak('{MM-1}', '2026-03-31'), '02');
+  assert.equal(razrijesiPredlozak('{MM-1}', '2026-03-01'), '02');
+});
+
+test('pomak: vrijedi i u pozivu na broj, zajedno s kontrolnim brojem', () => {
+  assert.equal(razrijesiPozivNaBroj('1887{MM-1}2601-{KB}', '2026-11-15'), '1887102601-2');
+  assert.ok(imaOznake('{MM-1}'), 'pomak se prepoznaje kao oznaka');
+  assert.equal(razrijesiPredlozak('{XY-1}', '2026-11-15'), '{XY-1}', 'nepoznate oznake se ne diraju');
+});

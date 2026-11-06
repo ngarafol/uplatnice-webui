@@ -16,9 +16,20 @@
 import { parseIso } from './recurring.js';
 
 /** Redoslijed je važan: duže oznake prvo, inače `{MM}` pojede `{M}`. */
-const UZORAK = /\{(MM|M|YYYY|YY)\}/g;
+const UZORAK = /\{(MM|M|YYYY|YY)(?:([+-])(\d{1,2}))?\}/g;
 /** Isti uzorak bez `/g` — `.test()` s globalnim regexom pamti `lastIndex`. */
-const IMA_UZORAK = /\{(MM|M|YYYY|YY)\}/;
+const IMA_UZORAK = /\{(MM|M|YYYY|YY)(?:[+-]\d{1,2})?\}/;
+
+/**
+ * Pomak datuma za N mjeseci. Dan se postavlja na 1 prije pomaka: 31. ožujka
+ * minus mjesec dana inače skoči na 3. ožujka („31. veljače"), pa bi mjesec bio
+ * pogrešan. Za oznake se ionako čita samo mjesec i godina.
+ */
+function pomakniMjesece(datum, mjeseci) {
+  const pomaknut = new Date(datum.getFullYear(), datum.getMonth(), 1);
+  pomaknut.setMonth(pomaknut.getMonth() + mjeseci);
+  return pomaknut;
+}
 
 const vrijednost = {
   M: (datum) => String(datum.getMonth() + 1),
@@ -56,6 +67,7 @@ export const OZNAKE = [
   ['{M}', 'mjesec bez nule (1–12)'],
   ['{YYYY}', 'godina, 4 znamenke'],
   ['{YY}', 'godina, 2 znamenke'],
+  ['{MM-1}', 'prethodni mjesec (može i {MM+1})'],
 ];
 
 /** Ima li tekst ijednu oznaku? */
@@ -92,7 +104,12 @@ export function razrijesiPredlozak(tekst, datumIso) {
   const datum = parseIso(datumIso);
   if (Number.isNaN(datum.getTime())) return izvorno;
 
-  return izvorno.replace(UZORAK, (_, oznaka) => vrijednost[oznaka](datum));
+  return izvorno.replace(UZORAK, (_, oznaka, znak, broj) => {
+    // Pomak vrijedi za CIJELI datum, ne za pojedino polje: {MM-1} i {YYYY-1} u
+    // siječnju daju prosinac PREPROŠLE godine, što je ono što se očekuje.
+    const mjeseci = znak ? Number(broj) * (znak === '-' ? -1 : 1) : 0;
+    return vrijednost[oznaka](mjeseci ? pomakniMjesece(datum, mjeseci) : datum);
+  });
 }
 
 /**

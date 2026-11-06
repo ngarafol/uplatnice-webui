@@ -240,6 +240,10 @@ poziv na broj:   {MM}{YYYY}-1328                          -> 122025-1328
 Označiš uplatu plaćenom, dospijeće skoči na sljedeći period, pa isti predložak
 sam da `01/26` i `012026-1328`. Ništa se ne tipka ponovno.
 
+**Prethodni mjesec.** Oznaci se može dodati pomak u mjesecima — `{MM-1}` je
+prethodni mjesec, `{MM+1}` sljedeći. Pomak vrijedi za **cijeli datum**, pa
+`{MM-1}/{YY-1}` u siječnju daje `12/25`, a ne `12/26`.
+
 **Kontrolni broj (model HR01–HR08).** Ako model traži kontrolnu znamenku, u
 poziv na broj upiši `{KB}`; izračuna se po **MOD11INI** iz znamenaka ostatka
 poziva, pa se mijenja s mjesecom kao i ostalo:
