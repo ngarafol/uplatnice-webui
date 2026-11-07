@@ -287,3 +287,6 @@ body {
     print-color-adjust: exact;
   }
 }
+
+/* Više uplatnica odjednom: svaka ide na svoju stranicu. */
+.sheet + .sheet { break-before: page; page-break-before: always; }

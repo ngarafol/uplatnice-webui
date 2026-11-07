@@ -11,6 +11,7 @@ const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const SCRYPT = { N: 16384, r: 8, p: 1, keylen: 32 };
 
 export const MIN_PASSWORD_LENGTH = 8;
+export const PORUKA_KRATKA_LOZINKA = `Lozinka mora imati barem ${MIN_PASSWORD_LENGTH} znakova.`;
 
 export function hashPassword(password) {
   const salt = randomBytes(16);
@@ -68,9 +69,9 @@ function secureCookies() {
   return process.env.NODE_ENV === 'production';
 }
 
-export function issueSession(res, userId) {
+export function issueSession(res, userId, verzija = 0) {
   const expiry = Date.now() + SESSION_MAX_AGE_MS;
-  const payload = `${userId}.${expiry}`;
+  const payload = `${userId}.${expiry}.${verzija}`;
   res.cookie(COOKIE_NAME, `${payload}.${sign(payload)}`, {
     httpOnly: true,
     sameSite: 'lax',
@@ -85,25 +86,32 @@ export function clearSession(res) {
 
 /** Postavlja req.user ako je cookie valjan, inače ga ostavlja null. */
 export function sessionMiddleware(db) {
-  const findUser = db.prepare('SELECT id, email, name, address, city FROM user WHERE id = ?');
+  const findUser = db.prepare(
+    'SELECT id, email, name, address, city, pass_hash, session_version FROM user WHERE id = ?',
+  );
 
   return (req, res, next) => {
     req.user = null;
     const token = parseCookies(req.headers.cookie)[COOKIE_NAME];
 
     if (token) {
-      const [uid, expiry, signature] = token.split('.');
-      const payload = `${uid}.${expiry}`;
+      const [uid, expiry, verzija, signature] = token.split('.');
+      const payload = `${uid}.${expiry}.${verzija}`;
       const expected = sign(payload);
       const valid =
         uid &&
         expiry &&
+        verzija !== undefined &&
         signature &&
         Number(expiry) > Date.now() &&
         signature.length === expected.length &&
         timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
 
       if (valid) req.user = findUser.get(Number(uid)) ?? null;
+      // Promjena lozinke poveća session_version, pa stari kolačić više ne prolazi.
+      if (req.user && String(req.user.session_version ?? 0) !== String(verzija)) {
+        req.user = null;
+      }
       if (!req.user) res.clearCookie(COOKIE_NAME);
     }
 

@@ -1,10 +1,23 @@
 import express from 'express';
 import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { pokreniKopije } from './backup.js';
 import { openDb } from './db.js';
 import { sessionMiddleware } from './auth.js';
 import { createRouter } from './routes.js';
 
 const db = openDb();
+
+// Dnevna kopija baze. Podrazumijevano uz samu bazu (u kontejneru je to volumen);
+// BACKUP_DIR je preusmjerava na drugi disk, BACKUP_KEEP određuje koliko se čuva.
+// Prazna varijabla u .env nije "nepostavljena" — zato `||`, a ne `??`, inače
+// bi prazan BACKUP_DIR pokušao pisati u '' i prazan BACKUP_KEEP obrisao sve.
+pokreniKopije(db, {
+  direktorij:
+    String(process.env.BACKUP_DIR ?? '').trim() ||
+    join(dirname(process.env.DB_PATH ?? 'data/uplatnice.db'), 'backups'),
+  koliko: Number(process.env.BACKUP_KEEP) || 14,
+});
 const app = express();
 // Iza Caddyja: bez ovoga bi req.protocol u adresi kalendara bio http.
 app.set('trust proxy', 1);

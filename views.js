@@ -6,6 +6,7 @@
 import { html, raw } from './html.js';
 import { OZNAKE } from './predlozak.js';
 import { VERZIJA } from './verzija.js';
+import { MIN_PASSWORD_LENGTH } from './auth.js';
 
 /** Isti hint za sva polja koja primaju oznake. */
 const OZNAKE_HINT = `Oznake se popune datumom dospijeća: ${OZNAKE.map(([o, opis]) => `${o} ${opis}`).join(' · ')}`;
@@ -301,6 +302,9 @@ export function prijavaPage({ values = {}, error } = {}) {
         ${feedback(error)}
         <form method="post" action="/prijava" class="stack">
           ${field({ name: 'email', label: 'E-mail', value: values.email, type: 'email', required: true, attrs: 'autofocus autocomplete=username' })}
+          ${traziKod
+            ? field({ name: 'kod', label: 'Kod za registraciju', required: true, error: errors.kod, hint: 'Dobiješ ga od vlasnika instance.' })
+            : ''}
           ${field({ name: 'password', label: 'Lozinka', type: 'password', required: true, reveal: true, attrs: 'autocomplete=current-password' })}
           <button class="btn primary" type="submit">Prijavi se</button>
         </form>
@@ -310,7 +314,7 @@ export function prijavaPage({ values = {}, error } = {}) {
   });
 }
 
-export function registracijaPage({ values = {}, errors = {} } = {}) {
+export function registracijaPage({ values = {}, errors = {}, traziKod = false } = {}) {
   return layout({
     title: 'Registracija',
     user: null,
@@ -328,6 +332,9 @@ export function registracijaPage({ values = {}, errors = {} } = {}) {
             </div>
           </fieldset>
           ${field({ name: 'email', label: 'E-mail', value: values.email, type: 'email', required: true, error: errors.email, attrs: 'autocomplete=username' })}
+          ${traziKod
+            ? field({ name: 'kod', label: 'Kod za registraciju', required: true, error: errors.kod, hint: 'Dobiješ ga od vlasnika instance.' })
+            : ''}
           ${field({ name: 'password', label: 'Lozinka', type: 'password', required: true, reveal: true, error: errors.password, hint: 'Najmanje 8 znakova.', attrs: 'autocomplete=new-password' })}
           <button class="btn primary" type="submit">Kreiraj račun</button>
         </form>
@@ -367,7 +374,7 @@ const statsCard = (sazetak, mjesec) => html`
       <p class="stat-note">
         ${sazetak.otvoreno.broj === 0
           ? 'sve je plaćeno'
-          : html`${plural(sazetak.otvoreno.broj, 'uplatnica', 'uplatnice', 'uplatnica')} do kraja mjeseca${sazetak.otvoreno.kasni
+          : html`${plural(sazetak.otvoreno.broj, 'uplatnica', 'uplatnice', 'uplatnica')} do kraja mjeseca · <a href="/uplatnice/ispis-mjeseca">ispiši sve</a>${sazetak.otvoreno.kasni
               ? html` · <span class="stat-late">${plural(sazetak.otvoreno.kasni, 'kasni', 'kasne', 'kasni')}</span>`
               : ''}`}
       </p>
@@ -711,7 +718,16 @@ export function detaljPage({
     `,
   });
 }
-export function postavkePage({ values, user, errors = {}, nacini = [], poruka, greska, kalendarUrl = '' }) {
+export function postavkePage({
+  values,
+  user,
+  errors = {},
+  greskeLozinke = {},
+  nacini = [],
+  poruka,
+  greska,
+  kalendarUrl = '',
+}) {
   return layout({
     title: 'Postavke',
     user,
@@ -733,6 +749,21 @@ export function postavkePage({ values, user, errors = {}, nacini = [], poruka, g
           <button class="btn primary" type="submit">Spremi</button>
         </div>
       </form>
+
+      <section class="card">
+        <h2>Lozinka</h2>
+        <p class="muted">
+          Promjena lozinke odjavljuje sve ostale uređaje; ovdje ostaješ prijavljen.
+        </p>
+        <form method="post" action="/postavke/lozinka" class="stack">
+          ${field({ name: 'trenutna', label: 'Trenutna lozinka', type: 'password', required: true, reveal: true, error: greskeLozinke.trenutna, attrs: 'autocomplete=current-password' })}
+          ${field({ name: 'nova', label: 'Nova lozinka', type: 'password', required: true, reveal: true, error: greskeLozinke.nova, hint: `Najmanje ${MIN_PASSWORD_LENGTH} znakova.`, attrs: 'autocomplete=new-password' })}
+          ${field({ name: 'potvrda', label: 'Ponovi novu lozinku', type: 'password', required: true, reveal: true, error: greskeLozinke.potvrda, attrs: 'autocomplete=new-password' })}
+          <div class="actions">
+            <button class="btn primary" type="submit">Promijeni lozinku</button>
+          </div>
+        </form>
+      </section>
 
       <section class="card">
         <h2>Načini plaćanja <span class="count">${nacini.length}</span></h2>

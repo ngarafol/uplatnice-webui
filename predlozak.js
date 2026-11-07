@@ -74,7 +74,7 @@ export const OZNAKE = [
 export const imaOznake = (tekst) => IMA_UZORAK.test(String(tekst ?? ''));
 
 /** Treba li poziv na broj izračunati kontrolni broj? */
-export const imaKontrolni = (tekst) => String(tekst ?? '').includes('{KB}');
+const imaKontrolni = (tekst) => String(tekst ?? '').includes('{KB}');
 
 /**
  * Razriješi poziv na broj: datumski dio pa kontrolni broj.

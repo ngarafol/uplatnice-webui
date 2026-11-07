@@ -97,6 +97,8 @@ export function openDb(path = process.env.DB_PATH ?? 'data/uplatnice.db') {
   ensureColumn(db, 'placanje', 'prethodni_due', 'TEXT');
   // Tajna adresa za pretplatu na kalendar; kalendar ne može poslati cookie.
   ensureColumn(db, 'user', 'calendar_token', 'TEXT');
+  // Povećava se pri promjeni lozinke: stari kolačići prestanu vrijediti.
+  ensureColumn(db, 'user', 'session_version', 'INTEGER NOT NULL DEFAULT 0');
   return db;
 }
 

@@ -9,13 +9,15 @@ import { pdf417svg } from './barcode.js';
 import { exportFile, parseExportFile } from './izvoz.js';
 import { generirajKalendar } from './kalendar.js';
 import { imaOznake, razrijesiPredlozak, razrijesiUplatnicu } from './predlozak.js';
-import { MIN_PASSWORD_LENGTH, clearSession, hashPassword, issueSession, requireLogin, verifyPassword } from './auth.js';
+import { MIN_PASSWORD_LENGTH, PORUKA_KRATKA_LOZINKA, clearSession, hashPassword, issueSession, requireLogin, verifyPassword } from './auth.js';
 import {
   INTERVAL_UNITS,
   addInterval,
   advanceNextDue,
   lastDayOfMonth,
   monthKey,
+  monthLabel,
+  monthLabelIn,
   todayIso,
 } from './recurring.js';
 import {
@@ -28,7 +30,7 @@ import {
   uplatnicaZaKorisnika,
   uplatniceZaKorisnika,
 } from './db.js';
-import { ispisPage } from './views-ispis.js';
+import { ispisMjesecaPage, ispisPage } from './views-ispis.js';
 import {
   detaljPage,
   dashboardPage,
@@ -281,29 +283,40 @@ export function createRouter(db) {
     if (!user || !verifyPassword(password, user.pass_hash)) {
       return send(res, prijavaPage({ values: { email }, error: 'Pogrešan e-mail ili lozinka.' }), 401);
     }
-    issueSession(res, user.id);
+    issueSession(res, user.id, user.session_version);
     res.redirect(303, '/');
   });
 
+  // Ako je REGISTRATION_CODE postavljen, registracija traži taj kod. Prazno =
+  // otvorena registracija (kao dosad).
+  const kodZaRegistraciju = () => String(process.env.REGISTRATION_CODE ?? '').trim();
+
   router.get('/registracija', (req, res) => {
     if (req.user) return res.redirect('/');
-    send(res, registracijaPage());
+    send(res, registracijaPage({ traziKod: Boolean(kodZaRegistraciju()) }));
   });
 
   router.post('/registracija', (req, res) => {
     const { values, errors } = readProfilForm(req.body);
     const password = String(req.body.password ?? '');
     if (password.length < MIN_PASSWORD_LENGTH) {
-      errors.password = `Lozinka mora imati barem ${MIN_PASSWORD_LENGTH} znakova.`;
+      errors.password = PORUKA_KRATKA_LOZINKA;
     }
 
-    if (Object.keys(errors).length) return send(res, registracijaPage({ values, errors }), 400);
+    const trazeniKod = kodZaRegistraciju();
+    if (trazeniKod && String(req.body.kod ?? '').trim() !== trazeniKod) {
+      errors.kod = 'Kod za registraciju nije točan.';
+    }
+
+    if (Object.keys(errors).length) {
+      return send(res, registracijaPage({ values, errors, traziKod: Boolean(trazeniKod) }), 400);
+    }
 
     const result = db
       .prepare('INSERT INTO user (email, pass_hash, name, address, city, created_at) VALUES (?, ?, ?, ?, ?, ?)')
       .run(values.email, hashPassword(password), values.name, values.address, values.city, new Date().toISOString());
 
-    issueSession(res, Number(result.lastInsertRowid));
+    issueSession(res, Number(result.lastInsertRowid), 0);
     res.redirect(303, '/');
   });
 
@@ -339,12 +352,46 @@ export function createRouter(db) {
     });
 
   router.get('/postavke', requireLogin, (req, res) => {
-    const poruka = req.query.kalendar
+    const poruka = req.query.lozinka
+      ? 'Lozinka je promijenjena. Ostali uređaji su odjavljeni.'
+      : req.query.kalendar
       ? 'Nova adresa kalendara je postavljena — stara više ne radi.'
       : req.query.spremljeno
         ? 'Podaci su spremljeni.'
         : '';
     send(res, postavkeStranica(req, { poruka }));
+  });
+
+  router.post('/postavke/lozinka', requireLogin, (req, res) => {
+    const trenutna = String(req.body.trenutna ?? '');
+    const nova = String(req.body.nova ?? '');
+    const potvrda = String(req.body.potvrda ?? '');
+    const greske = {};
+
+    if (!verifyPassword(trenutna, req.user.pass_hash)) {
+      greske.trenutna = 'Trenutna lozinka nije točna.';
+    }
+    if (nova.length < MIN_PASSWORD_LENGTH) {
+      greske.nova = PORUKA_KRATKA_LOZINKA;
+    } else if (nova === trenutna) {
+      greske.nova = 'Nova lozinka je ista kao trenutna.';
+    }
+    if (nova !== potvrda) greske.potvrda = 'Lozinke se ne podudaraju.';
+
+    if (Object.keys(greske).length) {
+      return send(res, postavkeStranica(req, { greskeLozinke: greske }), 400);
+    }
+
+    // Nova verzija sesije odjavljuje sve ostale uređaje; ovaj preglednik dobiva
+    // novi kolačić da ne moraš odmah ponovno na prijavu.
+    const verzija = Number(req.user.session_version ?? 0) + 1;
+    db.prepare('UPDATE user SET pass_hash = ?, session_version = ? WHERE id = ?').run(
+      hashPassword(nova),
+      verzija,
+      req.user.id,
+    );
+    issueSession(res, req.user.id, verzija);
+    res.redirect(303, '/postavke?lozinka=1');
   });
 
   router.post('/postavke/kalendar', requireLogin, (req, res) => {
@@ -584,6 +631,25 @@ export function createRouter(db) {
     if (!req.uplatnica.is_owner) return send(res, notFoundPage({ user: req.user }), 403);
     next();
   };
+
+  // Sve što ovaj mjesec još treba platiti, svaka uplatnica na svojoj stranici.
+  router.get('/uplatnice/ispis-mjeseca', requireLogin, (req, res) => {
+    const danas = todayIso();
+    const mjesec = monthKey(danas);
+    const krajMjeseca = lastDayOfMonth(mjesec);
+
+    const stavke = uplatniceZaKorisnika(db, req.user.id)
+      .filter((u) => !u.archived && u.next_due && u.next_due <= krajMjeseca)
+      .map((u) => ({
+        uplatnica: razrijesiUplatnicu(u),
+        user: req.user,
+        barcodeSvg: pdf417svg(buildPayload(payloadInput(req.user, u))),
+      }));
+
+    if (!stavke.length) return res.redirect(303, '/uplatnice');
+
+    send(res, ispisMjesecaPage({ stavke, naslov: `Uplatnice – ${monthLabel(mjesec)}` }));
+  });
 
   router.get('/uplatnice/:id', requireLogin, loadUplatnica, (req, res) => {
     const payments = db

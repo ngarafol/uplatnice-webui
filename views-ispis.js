@@ -19,25 +19,13 @@ const partyLines = (...values) =>
     .filter((line) => line !== '')
     .map((line) => html`<p class="party-line">${line}</p>`);
 
-export function ispisPage({ uplatnica, user, barcodeSvg }) {
+/** Jedan obrazac HUB 3A — dijeli se između pojedinačnog i zajedničkog ispisa. */
+function obrazac(uplatnica, user, barcodeSvg) {
   const amount = formatAmount(uplatnica.iznos_cents);
   // Dug iznos (do 15 znamenki) mora ostati unutar okvira "Valuta i iznos".
   const amountSize = amount.length > 12 ? ' amount-value-xs' : amount.length > 9 ? ' amount-value-sm' : '';
-  return html`<!doctype html>
-<html lang="hr">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${uplatnica.label} · Ispis uplatnice</title>
-  <link rel="stylesheet" href="/static/print.css">
-</head>
-<body>
-  <div class="print-bar">
-    <span>Pregled ispisa — u dijalogu za ispis odaberi "Spremi kao PDF" ili pisač.</span>
-    <button type="button" class="print-button" onclick="window.print()">Ispis / PDF</button>
-  </div>
 
-  <article class="sheet">
+  return html`<article class="sheet">
     <header class="sheet-head">
       <p class="form-code">Obrazac HUB 3A</p>
       <h1 class="sheet-title">NALOG ZA NACIONALNA PLAĆANJA</h1>
@@ -98,7 +86,37 @@ export function ispisPage({ uplatnica, user, barcodeSvg }) {
         <div class="stamp-box"><p class="box-label">Potpis korisnika PU</p></div>
       </section>
     </div>
-  </article>
+  </article>`;
+}
+
+/** Zajednički <head> i traka s gumbom za ispis. */
+function zaglavlje(naslov) {
+  return html`<!doctype html>
+<html lang="hr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${naslov} · Ispis uplatnice</title>
+  <link rel="stylesheet" href="/static/print.css">
+</head>
+<body>
+  <div class="print-bar">
+    <span>Pregled ispisa — u dijalogu za ispis odaberi "Spremi kao PDF" ili pisač.</span>
+    <button type="button" class="print-button" onclick="window.print()">Ispis / PDF</button>
+  </div>`;
+}
+
+export function ispisPage({ uplatnica, user, barcodeSvg }) {
+  return html`${zaglavlje(uplatnica.label)}
+${obrazac(uplatnica, user, barcodeSvg)}
+</body>
+</html>`;
+}
+
+/** Više uplatnica odjednom — svaka na svojoj stranici. */
+export function ispisMjesecaPage({ stavke, naslov }) {
+  return html`${zaglavlje(naslov)}
+${stavke.map(({ uplatnica, user, barcodeSvg }) => obrazac(uplatnica, user, barcodeSvg))}
 </body>
 </html>`;
 }
