@@ -302,9 +302,6 @@ export function prijavaPage({ values = {}, error } = {}) {
         ${feedback(error)}
         <form method="post" action="/prijava" class="stack">
           ${field({ name: 'email', label: 'E-mail', value: values.email, type: 'email', required: true, attrs: 'autofocus autocomplete=username' })}
-          ${traziKod
-            ? field({ name: 'kod', label: 'Kod za registraciju', required: true, error: errors.kod, hint: 'Dobiješ ga od vlasnika instance.' })
-            : ''}
           ${field({ name: 'password', label: 'Lozinka', type: 'password', required: true, reveal: true, attrs: 'autocomplete=current-password' })}
           <button class="btn primary" type="submit">Prijavi se</button>
         </form>
