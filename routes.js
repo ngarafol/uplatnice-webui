@@ -8,7 +8,7 @@ import { buildPayload, formatAmount, LIMITS, parseAmount, parsePayload, validate
 import { pdf417svg } from './barcode.js';
 import { exportFile, parseExportFile } from './izvoz.js';
 import { generirajKalendar } from './kalendar.js';
-import { imaOznake, razrijesiPredlozak, razrijesiUplatnicu } from './predlozak.js';
+import { imaOznake, razrijesiPozivNaBroj, razrijesiUplatnicu } from './predlozak.js';
 import { MIN_PASSWORD_LENGTH, PORUKA_KRATKA_LOZINKA, clearSession, hashPassword, issueSession, requireLogin, verifyPassword } from './auth.js';
 import {
   INTERVAL_UNITS,
@@ -770,7 +770,7 @@ export function createRouter(db) {
       uplatnica.id,
       now,
       uplatnica.iznos_cents,
-      razrijesiPredlozak(uplatnica.poziv_na_broj, uplatnica.next_due),
+      razrijesiPozivNaBroj(uplatnica.poziv_na_broj, uplatnica.next_due),
       nacin?.id ?? null,
       uplatnica.next_due,
     );

@@ -6,6 +6,7 @@
  * IF NOT EXISTS je idempotentan, pa se sigurno izvršava na svakom pokretanju.
  */
 import { DatabaseSync } from 'node:sqlite';
+import { razrijesiPozivNaBroj } from './predlozak.js';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -85,6 +86,29 @@ function ensureColumn(db, table, column, definition) {
 }
 
 /** Otvara bazu i osigurava shemu. */
+/**
+ * Popravlja zapise plaćanja kojima je u poziv na broj spremljen predložak
+ * (npr. `1887{MM}2601-{KB}`) umjesto izračunate vrijednosti. Datumi su tada već
+ * bili razriješeni, pa se računa samo kontrolni broj — iz samog zapisa, ne iz
+ * uplatnice, jer se ona u međuvremenu mogla urediti.
+ */
+function popraviZapisePlacanja(db) {
+  const redovi = db
+    .prepare(
+      "SELECT id, poziv_na_broj, prethodni_due FROM placanje WHERE instr(poziv_na_broj, '{') > 0",
+    )
+    .all();
+  if (!redovi.length) return;
+
+  const update = db.prepare('UPDATE placanje SET poziv_na_broj = ? WHERE id = ?');
+  for (const red of redovi) {
+    // prethodni_due je dospijeće koje je vrijedilo pri plaćanju, pa njime
+    // rješavamo i zapise kojima su u međuvremenu ostale i datum ske oznake.
+    const popravljen = razrijesiPozivNaBroj(red.poziv_na_broj, red.prethodni_due ?? null);
+    if (!popravljen.includes('{')) update.run(popravljen, red.id);
+  }
+}
+
 export function openDb(path = process.env.DB_PATH ?? 'data/uplatnice.db') {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
 
@@ -99,6 +123,7 @@ export function openDb(path = process.env.DB_PATH ?? 'data/uplatnice.db') {
   ensureColumn(db, 'user', 'calendar_token', 'TEXT');
   // Povećava se pri promjeni lozinke: stari kolačići prestanu vrijediti.
   ensureColumn(db, 'user', 'session_version', 'INTEGER NOT NULL DEFAULT 0');
+  popraviZapisePlacanja(db);
   return db;
 }
 
