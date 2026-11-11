@@ -4,7 +4,7 @@
  */
 import { randomBytes } from 'node:crypto';
 import express from 'express';
-import { buildPayload, formatAmount, LIMITS, parseAmount, parsePayload, validate } from './hub3.js';
+import { buildPayload, formatAmount, formatAmountField, LIMITS, parseAmount, parsePayload, validate } from './hub3.js';
 import { pdf417svg } from './barcode.js';
 import { exportFile, parseExportFile } from './izvoz.js';
 import { generirajKalendar } from './kalendar.js';
@@ -36,6 +36,7 @@ import {
   dashboardPage,
   errorPage,
   formaPage,
+  iznosPage,
   listaPage,
   notFoundPage,
   platiPage,
@@ -462,6 +463,7 @@ export function createRouter(db) {
         uplatnice: uplatniceZaKorisnika(db, req.user.id).map(razrijesiUplatnicu),
         user: req.user,
         uvezeno: Number(req.query.uvezeno) || 0,
+        iznosSpremljen: Boolean(req.query.iznos),
         ...sazetakZa(req),
       }),
     );
@@ -737,6 +739,40 @@ export function createRouter(db) {
     ).run(...uplatnicaVrijednosti(record), new Date().toISOString(), req.uplatnica.id);
 
     res.redirect(303, `/uplatnice/${req.uplatnica.id}`);
+  });
+
+  // Brza promjena samo iznosa — najčešća izmjena kod računa koji variraju.
+  router.get('/uplatnice/:id/iznos', requireLogin, loadUplatnica, ownerOnly, (req, res) => {
+    send(res, iznosPage({
+      uplatnica: req.uplatnica,
+      user: req.user,
+      values: { iznos: formatAmount(req.uplatnica.iznos_cents) },
+    }));
+  });
+
+  router.post('/uplatnice/:id/iznos', requireLogin, loadUplatnica, ownerOnly, (req, res) => {
+    const tekst = String(req.body.iznos ?? '').trim();
+    const greske = {};
+    let centi = null;
+
+    try {
+      centi = parseAmount(tekst);
+      // formatAmountField baca ako je iznos izvan granica polja u barkodu.
+      formatAmountField(centi);
+    } catch {
+      greske.iznos = 'Iznos upiši kao broj, npr. 70,00.';
+    }
+
+    if (Object.keys(greske).length) {
+      return send(res, iznosPage({ uplatnica: req.uplatnica, user: req.user, values: { iznos: tekst }, errors: greske }), 400);
+    }
+
+    db.prepare('UPDATE uplatnica SET iznos_cents = ?, updated_at = ? WHERE id = ?').run(
+      centi,
+      new Date().toISOString(),
+      req.uplatnica.id,
+    );
+    res.redirect(303, '/uplatnice?iznos=1');
   });
 
   router.get('/uplatnice/:id/plati', requireLogin, loadUplatnica, (req, res) => {

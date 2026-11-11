@@ -508,3 +508,20 @@ html[data-kod-pregled='da'] .kod-hover:focus-within .kod-pregled {
 /* Potvrdni okvir u Postavkama. */
 .check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; cursor: pointer; }
 .check input { margin: 3px 0 0; accent-color: var(--primary); }
+
+/* Iznos u popisu vodi na brzu promjenu — isprekidana crta i olovka da se vidi
+   da je klikabilno, i na dodir, gdje nema prelaska mišem. */
+.iznos-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--muted);
+}
+.iznos-link:hover,
+.iznos-link:focus-visible {
+  color: var(--primary);
+  border-bottom-color: currentColor;
+}
+.iznos-olovka { width: 12px; height: 12px; opacity: 0.55; flex: none; }

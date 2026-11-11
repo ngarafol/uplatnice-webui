@@ -388,7 +388,12 @@ const uplatnicaRow = (uplatnica, today, povratak) => html`
   <tr class="${isOverdue(uplatnica.next_due, today) ? 'overdue' : ''}">
     <td><a class="strong" href="/uplatnice/${uplatnica.id}">${uplatnica.label}</a></td>
     <td>${uplatnica.prim_name}</td>
-    <td class="num">${money(uplatnica.iznos_cents)}</td>
+    <td class="num">
+      ${uplatnica.archived
+        ? money(uplatnica.iznos_cents)
+        : html`<a class="iznos-link" href="/uplatnice/${uplatnica.id}/iznos"
+                   title="Promijeni iznos">${money(uplatnica.iznos_cents)}<svg class="iznos-olovka" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></a>`}
+    </td>
     <td class="mono">${uplatnica.poziv_na_broj || '—'}</td>
     <td>${formatDate(uplatnica.next_due)}</td>
     <td>${dueBadge(uplatnica, today)}</td>
@@ -463,7 +468,15 @@ export function dashboardPage({ uplatnice, user, sazetak, mjesec, today = todayI
   });
 }
 
-export function listaPage({ uplatnice, user, sazetak, mjesec, uvezeno = 0, today = todayIso() }) {
+export function listaPage({
+  uplatnice,
+  user,
+  sazetak,
+  mjesec,
+  uvezeno = 0,
+  iznosSpremljen = false,
+  today = todayIso(),
+}) {
   const active = uplatnice.filter((u) => !u.archived);
   const archived = uplatnice.filter((u) => u.archived);
 
@@ -485,6 +498,7 @@ export function listaPage({ uplatnice, user, sazetak, mjesec, uvezeno = 0, today
       ${uvezeno > 0
         ? feedback(`Uvezeno ${plural(uvezeno, 'uplatnica', 'uplatnice', 'uplatnica')}.`, 'ok')
         : ''}
+      ${iznosSpremljen ? feedback('Iznos je promijenjen.', 'ok') : ''}
 
       <section class="card">
         ${uplatnicaTable(active, today, 'Nema aktivnih uplatnica.', '/uplatnice')}
@@ -1046,6 +1060,29 @@ export function uvozPage({ user, greska, greske = [], json = '' }) {
           }
         });
       </script>
+    `,
+  });
+}
+
+export function iznosPage({ uplatnica, user, values = {}, errors = {} }) {
+  return layout({
+    title: 'Promjena iznosa',
+    user,
+    body: html`
+      <a class="back-link" href="/uplatnice">← Natrag</a>
+      <div class="page-head"><h1>Promjena iznosa</h1></div>
+
+      <form method="post" action="/uplatnice/${uplatnica.id}/iznos" class="card stack">
+        <p class="muted">
+          <strong>${uplatnica.label}</strong> · ${uplatnica.prim_name}
+        </p>
+        ${field({ name: 'iznos', label: 'Iznos (EUR)', value: values.iznos, required: true, error: errors.iznos, attrs: 'inputmode=decimal autofocus placeholder=70,00' })}
+        <p class="field-hint">Ostala polja ostaju kakva jesu. Ako trebaš više, otvori <a href="/uplatnice/${uplatnica.id}/uredi">cijeli obrazac</a>.</p>
+        <div class="actions">
+          <button class="btn primary" type="submit">Spremi iznos</button>
+          <a class="btn" href="/uplatnice">Odustani</a>
+        </div>
+      </form>
     `,
   });
 }
