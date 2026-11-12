@@ -747,7 +747,6 @@ export function postavkePage({
 
       ${poruka ? feedback(poruka, 'ok') : ''}
       ${greska ? feedback(greska) : ''}
-      ${errors._ ? feedback(errors._, 'ok') : ''}
 
       <form method="post" action="/postavke" class="card form-grid">
         <h2 class="span-2">Podaci platitelja</h2>
@@ -1077,7 +1076,7 @@ export function brzoPage({ uplatnica, user, values = {}, errors = {} }) {
         <p class="muted">
           <strong>${uplatnica.label}</strong> · ${uplatnica.prim_name}
         </p>
-        ${errors._ ? feedback(errors._, 'ok') : ''}
+        ${errors._ ? feedback(errors._) : ''}
         ${field({ name: 'iznos', label: 'Iznos (EUR)', value: values.iznos, required: true, error: errors.iznos, attrs: 'inputmode=decimal autofocus placeholder=70,00' })}
         ${field({ name: 'opis', label: 'Opis plaćanja', value: values.opis, error: errors.opis, hint: OZNAKE_HINT, attrs: 'maxlength=35 placeholder="npr. clanarina {MM}/{YY}"' })}
         <p class="field-hint">

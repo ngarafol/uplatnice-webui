@@ -761,11 +761,8 @@ export function createRouter(db) {
 
     if (Object.keys(errors).length) {
       // Stranica prikazuje samo iznos i opis; sve ostalo ide u jednu poruku.
-      for (const kljuc of Object.keys(errors)) {
-        if (kljuc !== 'iznos' && kljuc !== 'opis' && kljuc !== '_') {
-          errors._ = 'Ostala polja uplatnice nisu ispravna — otvori cijeli obrazac.';
-        }
-      }
+      const ostalo = Object.keys(errors).some((k) => k !== 'iznos' && k !== 'opis' && k !== '_');
+      if (ostalo) errors._ = 'Ostala polja uplatnice nisu ispravna — otvori cijeli obrazac.';
       return send(res, brzoPage({ uplatnica: req.uplatnica, user: req.user, values: { iznos: tekstIznosa, opis }, errors }), 400);
     }
 
