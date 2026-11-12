@@ -123,6 +123,11 @@ export function openDb(path = process.env.DB_PATH ?? 'data/uplatnice.db') {
   ensureColumn(db, 'user', 'calendar_token', 'TEXT');
   // Povećava se pri promjeni lozinke: stari kolačići prestanu vrijediti.
   ensureColumn(db, 'user', 'session_version', 'INTEGER NOT NULL DEFAULT 0');
+  // Dopuna je jednokratna korekcija plaćanja; ostaje u povijesti, ali ne u popisu.
+  ensureColumn(db, 'uplatnica', 'dopuna', 'INTEGER NOT NULL DEFAULT 0');
+  // Dopune napravljene prije ove kolone prepoznaju se po nazivu koji im dodaje
+  // gumb „Dopuni". Idempotentno je, pa se može vrtjeti pri svakom dizanju.
+  db.prepare("UPDATE uplatnica SET dopuna = 1 WHERE dopuna = 0 AND label LIKE '% (dopuna)'").run();
   popraviZapisePlacanja(db);
   return db;
 }
@@ -142,7 +147,7 @@ export function uplatniceZaKorisnika(db, userId) {
               (SELECT MAX(paid_at) FROM placanje p WHERE p.uplatnica_id = u.id) AS last_paid
          FROM uplatnica u
          JOIN user us ON us.id = u.owner_id
-        WHERE ${VIDLJIVO}
+        WHERE ${VIDLJIVO} AND u.dopuna = 0
         ORDER BY u.archived ASC, COALESCE(u.next_due, '9999-12-31') ASC, u.label ASC`,
     )
     .all(userId, userId, userId);

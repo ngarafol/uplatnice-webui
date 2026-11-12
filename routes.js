@@ -823,6 +823,9 @@ export function createRouter(db) {
         now,
       );
 
+    // Dopuna se ne prikazuje u popisu uplatnica — u povijesti ostaje zapis.
+    db.prepare('UPDATE uplatnica SET dopuna = 1 WHERE id = ?').run(nova.lastInsertRowid);
+
     const povratak = backTo(req.body?.povratak, '/povijest');
     res.redirect(303, `/uplatnice/${nova.lastInsertRowid}/brzo?povratak=${encodeURIComponent(povratak)}`);
   });
