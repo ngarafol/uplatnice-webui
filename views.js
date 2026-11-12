@@ -1071,7 +1071,7 @@ export function uvozPage({ user, greska, greske = [], json = '' }) {
 }
 
 /** Brza izmjena onoga što se mijenja iz mjeseca u mjesec: iznos i opis. */
-export function brzoPage({ uplatnica, user, values = {}, errors = {}, povratak = '' }) {
+export function brzoPage({ uplatnica, user, values = {}, errors = {}, povratak = '', nacini = [] }) {
   return layout({
     title: 'Brza izmjena',
     user,
@@ -1090,6 +1090,18 @@ export function brzoPage({ uplatnica, user, values = {}, errors = {}, povratak =
           <div class="stack">
             ${field({ name: 'iznos', label: 'Iznos (EUR)', value: values.iznos, required: true, error: errors.iznos, attrs: 'inputmode=decimal autofocus placeholder=70,00' })}
             ${field({ name: 'opis', label: 'Opis plaćanja', value: values.opis, error: errors.opis, hint: OZNAKE_HINT, attrs: 'maxlength=35 placeholder="npr. clanarina {MM}/{YY}"' })}
+            <label class="field">
+              <span class="field-label">Način plaćanja</span>
+              <select name="nacin_id">
+                <option value="">— bez načina —</option>
+                ${nacini.map((n) => html`<option value="${n.id}">${n.naziv}</option>`)}
+              </select>
+              <span class="field-hint">
+                ${nacini.length
+                  ? html`Bilježi se uz uplatu. Načine uređuješ u <a href="/postavke">Postavkama</a>.`
+                  : html`Još nemaš načina plaćanja — dodaj ih u <a href="/postavke">Postavkama</a>.`}
+              </span>
+            </label>
             <p class="field-hint">
               Ostala polja ostaju kakva jesu. Ako trebaš više, otvori
               <a href="/uplatnice/${uplatnica.id}/uredi">cijeli obrazac</a>.
