@@ -203,7 +203,7 @@ function readUplatnicaForm(body, user) {
   const checked = validate(payloadInput(user, candidate));
   for (const error of checked.errors) {
     if (error.field === 'payerName' || error.field === 'payerAddress' || error.field === 'payerCity') {
-      errors._ = 'Podaci o platitelju u profilu nisu ispravni — ispravi ih na stranici Profil.';
+      errors._ = 'Podaci o platitelju u profilu nisu ispravni — ispravi ih u Postavkama.';
       continue;
     }
     if (error.field === 'currency') continue; // valuta je fiksna (EUR)
@@ -753,46 +753,25 @@ export function createRouter(db) {
   router.post('/uplatnice/:id/brzo', requireLogin, loadUplatnica, ownerOnly, (req, res) => {
     const tekstIznosa = String(req.body.iznos ?? '').trim();
     const opis = String(req.body.opis ?? '').trim();
-    const greske = {};
-    let centi = null;
 
-    try {
-      centi = parseAmount(tekstIznosa);
-      // formatAmountField baca ako je iznos izvan granica polja u barkodu.
-      formatAmountField(centi);
-    } catch {
-      greske.iznos = 'Iznos upiši kao broj, npr. 70,00.';
-    }
+    // Isti put kao cijeli obrazac: zapis iz baze + dva promijenjena polja.
+    // Tako brza izmjena ne može zaobići ni jedno pravilo (dužina opisa mjerena
+    // na razriješenom tekstu, oznake koje traže ponavljanje, granice iznosa).
+    const { errors, record } = readUplatnicaForm({ ...req.uplatnica, iznos: tekstIznosa, opis }, req.user);
 
-    // Oznake se pune datumom dospijeća; jednokratna uplatnica ga nema.
-    if (imaOznake(opis) && !req.uplatnica.interval_unit) {
-      greske.opis = 'Oznaka poput {MM} popunjava se datumom dospijeća — označi uplatnicu kao ponavljajuću.';
-    }
-
-    if (!greske.iznos && !greske.opis) {
-      // Ista pravila kao za cijeli obrazac — uključujući dužinu opisa mjerenu
-      // na razriješenom tekstu i oznake koje traže datum dospijeća.
-      const kandidat = { ...req.uplatnica, iznos_cents: centi, opis };
-      for (const greska of validate(payloadInput(req.user, kandidat)).errors) {
-        if (greska.field === 'payerName' || greska.field === 'payerAddress' || greska.field === 'payerCity') {
-          greske._ = 'Podaci o platitelju u profilu nisu ispravni — ispravi ih u Postavkama.';
-          continue;
+    if (Object.keys(errors).length) {
+      // Stranica prikazuje samo iznos i opis; sve ostalo ide u jednu poruku.
+      for (const kljuc of Object.keys(errors)) {
+        if (kljuc !== 'iznos' && kljuc !== 'opis' && kljuc !== '_') {
+          errors._ = 'Ostala polja uplatnice nisu ispravna — otvori cijeli obrazac.';
         }
-        if (greska.field === 'currency') continue;
-
-        const polje = FORM_FIELD[greska.field];
-        if (polje === 'iznos' || polje === 'opis') greske[polje] ??= greska.message;
-        else greske._ ??= 'Ostala polja uplatnice nisu ispravna — otvori cijeli obrazac.';
       }
-    }
-
-    if (Object.keys(greske).length) {
-      return send(res, brzoPage({ uplatnica: req.uplatnica, user: req.user, values: { iznos: tekstIznosa, opis }, errors: greske }), 400);
+      return send(res, brzoPage({ uplatnica: req.uplatnica, user: req.user, values: { iznos: tekstIznosa, opis }, errors }), 400);
     }
 
     db.prepare('UPDATE uplatnica SET iznos_cents = ?, opis = ?, updated_at = ? WHERE id = ?').run(
-      centi,
-      opis,
+      record.iznos_cents,
+      record.opis,
       new Date().toISOString(),
       req.uplatnica.id,
     );
