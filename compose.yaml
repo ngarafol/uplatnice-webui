@@ -8,7 +8,7 @@ services:
   uplatnice:
     # Namjerno prikvačena verzija: `latest` bi na svaki `pull` tiho donio drugu
     # sliku na server koji obrađuje novac.
-    image: ghcr.io/ngarafol/uplatnice-webui:0.10.0
+    image: ghcr.io/ngarafol/uplatnice-webui:0.11.0
     container_name: uplatnice
     restart: unless-stopped
     ports:
