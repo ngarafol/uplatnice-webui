@@ -8,7 +8,7 @@ import { buildPayload, formatAmount, formatAmountField, LIMITS, parseAmount, par
 import { pdf417svg } from './barcode.js';
 import { exportFile, parseExportFile } from './izvoz.js';
 import { generirajKalendar } from './kalendar.js';
-import { imaOznake, razrijesiPozivNaBroj, razrijesiUplatnicu } from './predlozak.js';
+import { imaOznake, razrijesiPozivNaBroj, razrijesiPredlozak, razrijesiUplatnicu } from './predlozak.js';
 import { MIN_PASSWORD_LENGTH, PORUKA_KRATKA_LOZINKA, clearSession, hashPassword, issueSession, requireLogin, verifyPassword } from './auth.js';
 import {
   INTERVAL_UNITS,
@@ -37,6 +37,7 @@ import {
   errorPage,
   formaPage,
   brzoPage,
+  vracanjePage,
   listaPage,
   notFoundPage,
   platiPage,
@@ -697,7 +698,15 @@ export function createRouter(db) {
 
   router.get('/uplatnice/:id/barkod.svg', requireLogin, loadUplatnica, (req, res) => {
     try {
-      const payload = buildPayload(payloadInput(req.user, req.uplatnica));
+      // Brza izmjena traži kod za ono što je trenutno u poljima, a ne za
+      // spremljeno stanje — zato opcionalni iznos i opis iz upita.
+      const izmjena = { ...req.uplatnica };
+      if (typeof req.query.iznos === 'string' && req.query.iznos.trim() !== '') {
+        izmjena.iznos_cents = parseAmount(req.query.iznos);
+      }
+      if (typeof req.query.opis === 'string') izmjena.opis = req.query.opis;
+
+      const payload = buildPayload(payloadInput(req.user, izmjena));
       res.type('image/svg+xml').send(pdf417svg(payload));
     } catch (e) {
       res.status(500).type('text/plain').send(e.message);
@@ -741,12 +750,53 @@ export function createRouter(db) {
     res.redirect(303, `/uplatnice/${req.uplatnica.id}`);
   });
 
+  /**
+   * Dopuna: nova jednokratna uplatnica iz već plaćene, s razriješenim opisom i
+   * pozivom (ne predloškom) — služi kad je plaćen pogrešan iznos.
+   */
+  router.post('/uplatnice/:id/kopiraj', requireLogin, loadUplatnica, (req, res) => {
+    const izvorna = req.uplatnica;
+    const uplata = db
+      .prepare('SELECT iznos_cents, prethodni_due FROM placanje WHERE uplatnica_id = ? ORDER BY id DESC LIMIT 1')
+      .get(izvorna.id);
+    const dan = uplata?.prethodni_due ?? izvorna.next_due;
+    const now = new Date().toISOString();
+
+    const nova = db
+      .prepare(UPLATNICA_INSERT)
+      .run(
+        req.user.id,
+        ...uplatnicaVrijednosti({
+          label: `${izvorna.label} (dopuna)`.slice(0, 60),
+          prim_name: izvorna.prim_name,
+          prim_address: izvorna.prim_address,
+          prim_city: izvorna.prim_city,
+          iban: izvorna.iban,
+          model: izvorna.model,
+          poziv_na_broj: razrijesiPozivNaBroj(izvorna.poziv_na_broj, dan),
+          iznos_cents: uplata?.iznos_cents ?? izvorna.iznos_cents,
+          sifra_namjene: izvorna.sifra_namjene,
+          opis: razrijesiPredlozak(izvorna.opis, dan),
+          interval_unit: null,
+          interval_count: null,
+          next_due: null,
+        }),
+        now,
+        now,
+      );
+
+    const povratak = backTo(req.body?.povratak, '/povijest');
+    res.redirect(303, `/uplatnice/${nova.lastInsertRowid}/brzo?povratak=${encodeURIComponent(povratak)}`);
+  });
+
   // Brza izmjena onoga što se mijenja iz mjeseca u mjesec: iznos i opis.
   router.get('/uplatnice/:id/brzo', requireLogin, loadUplatnica, ownerOnly, (req, res) => {
+    const povratak = req.query.povratak ? backTo(req.query.povratak, '/uplatnice') : '';
     send(res, brzoPage({
       uplatnica: req.uplatnica,
       user: req.user,
       values: { iznos: formatAmount(req.uplatnica.iznos_cents), opis: req.uplatnica.opis },
+      povratak,
     }));
   });
 
@@ -766,12 +816,21 @@ export function createRouter(db) {
       return send(res, brzoPage({ uplatnica: req.uplatnica, user: req.user, values: { iznos: tekstIznosa, opis }, errors }), 400);
     }
 
+    const now = new Date().toISOString();
     db.prepare('UPDATE uplatnica SET iznos_cents = ?, opis = ?, updated_at = ? WHERE id = ?').run(
       record.iznos_cents,
       record.opis,
-      new Date().toISOString(),
+      now,
       req.uplatnica.id,
     );
+
+    // „Plaćeno" iz istog pregleda: spremi pa odmah zabilježi uplatu.
+    if (req.body.akcija === 'plati') {
+      zabiljeziUplatu({ ...req.uplatnica, iznos_cents: record.iznos_cents, opis: record.opis }, null, now);
+      const natrag = backTo(req.body?.povratak, '/uplatnice');
+      return res.redirect(303, `/vracanje?na=${encodeURIComponent(natrag)}`);
+    }
+
     res.redirect(303, '/uplatnice?iznos=1');
   });
 
@@ -787,18 +846,12 @@ export function createRouter(db) {
     );
   });
 
-  router.post('/uplatnice/:id/plati', requireLogin, loadUplatnica, (req, res) => {
-    const uplatnica = req.uplatnica;
-    const now = new Date().toISOString();
-
-    // Tuđi ili nepostojeći način se ne prihvaća — uplata se ipak bilježi.
-    const trazeniNacin = Number(req.body.nacin_id);
-    const nacin = trazeniNacin
-      ? db
-          .prepare('SELECT id FROM nacin_placanja WHERE id = ? AND user_id = ? AND archived = 0')
-          .get(trazeniNacin, req.user.id)
-      : null;
-
+  /**
+   * Zabilježi uplatu i pomakni dospijeće. Dijele ga obično plaćanje i gumb
+   * „Plaćeno" iz brze izmjene — uplata je novac, pa ne smije postojati u dvije
+   * verzije koje se raziđu.
+   */
+  const zabiljeziUplatu = (uplatnica, nacinId, now) => {
     db.prepare(
       `INSERT INTO placanje (uplatnica_id, paid_at, iznos_cents, poziv_na_broj, nacin_id, prethodni_due)
        VALUES (?, ?, ?, ?, ?, ?)`,
@@ -807,7 +860,7 @@ export function createRouter(db) {
       now,
       uplatnica.iznos_cents,
       razrijesiPozivNaBroj(uplatnica.poziv_na_broj, uplatnica.next_due),
-      nacin?.id ?? null,
+      nacinId,
       uplatnica.next_due,
     );
 
@@ -818,8 +871,22 @@ export function createRouter(db) {
       db.prepare('UPDATE uplatnica SET next_due = ?, updated_at = ? WHERE id = ?')
         .run(nextDue, now, uplatnica.id);
     }
+  };
 
-    res.redirect(303, backTo(req.body?.povratak, `/uplatnice/${uplatnica.id}`));
+  router.post('/uplatnice/:id/plati', requireLogin, loadUplatnica, (req, res) => {
+    // Tuđi ili nepostojeći način se ne prihvaća — uplata se ipak bilježi.
+    const trazeniNacin = Number(req.body.nacin_id);
+    const nacin = trazeniNacin
+      ? db
+          .prepare('SELECT id FROM nacin_placanja WHERE id = ? AND user_id = ? AND archived = 0')
+          .get(trazeniNacin, req.user.id)
+      : null;
+
+    zabiljeziUplatu(req.uplatnica, nacin?.id ?? null, new Date().toISOString());
+
+    // Kratka obavijest prije povratka; može se isključiti u samoj obavijesti.
+    const natrag = backTo(req.body?.povratak, `/uplatnice/${req.uplatnica.id}`);
+    res.redirect(303, `/vracanje?na=${encodeURIComponent(natrag)}`);
   });
 
   /**
@@ -876,6 +943,21 @@ export function createRouter(db) {
     db.prepare('DELETE FROM share WHERE uplatnica_id = ? AND user_id = ?')
       .run(req.uplatnica.id, Number(req.body.user_id));
     res.redirect(303, `/uplatnice/${req.uplatnica.id}`);
+  });
+
+  /** Kratka obavijest prije povratka; klijent ju može isključiti (localStorage). */
+  router.get('/vracanje', requireLogin, (req, res) => {
+    const na = backTo(req.query.na, '/uplatnice');
+    const naziv =
+      na === '/povijest'
+        ? 'povijest plaćanja'
+        : na === '/uplatnice'
+          ? 'popis uplatnica'
+          : na.startsWith('/uplatnice/')
+            ? 'uplatnicu'
+            : 'prethodnu stranicu';
+
+    send(res, vracanjePage({ user: req.user, na, naziv }));
   });
 
   // ---------- 404 ----------

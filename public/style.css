@@ -525,3 +525,23 @@ html[data-kod-pregled='da'] .kod-hover:focus-within .kod-pregled {
   border-bottom-color: currentColor;
 }
 .iznos-olovka { width: 12px; height: 12px; opacity: 0.55; flex: none; }
+
+/* Brza izmjena: polja lijevo, kod desno — mora se vidjeti dok tipkaš. */
+.brzo-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 520px);
+  gap: 22px;
+  align-items: start;
+}
+.brzo-kod {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff; /* barkod uvijek na bijelom, i u tamnoj temi */
+}
+.brzo-kod .box-label { margin: 0 0 8px; }
+.brzo-kod img { display: block; width: 100%; height: auto; }
+@media (max-width: 760px) {
+  .brzo-grid { grid-template-columns: 1fr; }
+}

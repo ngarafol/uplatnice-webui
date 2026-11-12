@@ -16,6 +16,7 @@ import {
   prijavaPage,
   registracijaPage,
   uvozPage,
+  vracanjePage,
 } from '../views.js';
 
 const KORISNIK = { id: 1, email: 'a@b.hr', name: 'A B', address: 'Ulica 1', city: '10000 Grad' };

@@ -921,7 +921,7 @@ export function povijestPage({ mjeseci, user }) {
               </div>
               <table class="table">
                 <thead>
-                  <tr><th>Datum</th><th>Uplatnica</th><th>Način</th><th>Poziv na broj</th><th class="num">Iznos</th></tr>
+                  <tr><th>Datum</th><th>Uplatnica</th><th>Način</th><th>Poziv na broj</th><th class="num">Iznos</th><th></th></tr>
                 </thead>
                 <tbody>
                   ${m.stavke.map(
@@ -931,6 +931,13 @@ export function povijestPage({ mjeseci, user }) {
                       <td>${s.nacin || '—'}</td>
                       <td class="mono">${s.poziv_na_broj || '—'}</td>
                       <td class="num">${money(s.iznos_cents)}</td>
+                      <td class="actions-cell">
+                        <form method="post" action="/uplatnice/${s.uplatnica_id}/kopiraj">
+                          <input type="hidden" name="povratak" value="/povijest">
+                          <button class="btn small" type="submit"
+                                  title="Nova uplatnica s istim podacima — za doplatu razlike">Dopuni</button>
+                        </form>
+                      </td>
                     </tr>`,
                   )}
                 </tbody>
@@ -1064,30 +1071,123 @@ export function uvozPage({ user, greska, greske = [], json = '' }) {
 }
 
 /** Brza izmjena onoga što se mijenja iz mjeseca u mjesec: iznos i opis. */
-export function brzoPage({ uplatnica, user, values = {}, errors = {} }) {
+export function brzoPage({ uplatnica, user, values = {}, errors = {}, povratak = '' }) {
   return layout({
     title: 'Brza izmjena',
     user,
     body: html`
-      <a class="back-link" href="/uplatnice">← Natrag</a>
+      <a class="back-link" href="${povratak || '/uplatnice'}">← Natrag</a>
       <div class="page-head"><h1>Brza izmjena</h1></div>
 
-      <form method="post" action="/uplatnice/${uplatnica.id}/brzo" class="card stack">
+      <form method="post" action="/uplatnice/${uplatnica.id}/brzo" class="card" data-barkod-url="/uplatnice/${uplatnica.id}/barkod.svg">
+        ${povratak ? html`<input type="hidden" name="povratak" value="${povratak}">` : ''}
         <p class="muted">
           <strong>${uplatnica.label}</strong> · ${uplatnica.prim_name}
         </p>
         ${errors._ ? feedback(errors._) : ''}
-        ${field({ name: 'iznos', label: 'Iznos (EUR)', value: values.iznos, required: true, error: errors.iznos, attrs: 'inputmode=decimal autofocus placeholder=70,00' })}
-        ${field({ name: 'opis', label: 'Opis plaćanja', value: values.opis, error: errors.opis, hint: OZNAKE_HINT, attrs: 'maxlength=35 placeholder="npr. clanarina {MM}/{YY}"' })}
-        <p class="field-hint">
-          Ostala polja ostaju kakva jesu. Ako trebaš više, otvori
-          <a href="/uplatnice/${uplatnica.id}/uredi">cijeli obrazac</a>.
-        </p>
+
+        <div class="brzo-grid">
+          <div class="stack">
+            ${field({ name: 'iznos', label: 'Iznos (EUR)', value: values.iznos, required: true, error: errors.iznos, attrs: 'inputmode=decimal autofocus placeholder=70,00' })}
+            ${field({ name: 'opis', label: 'Opis plaćanja', value: values.opis, error: errors.opis, hint: OZNAKE_HINT, attrs: 'maxlength=35 placeholder="npr. clanarina {MM}/{YY}"' })}
+            <p class="field-hint">
+              Ostala polja ostaju kakva jesu. Ako trebaš više, otvori
+              <a href="/uplatnice/${uplatnica.id}/uredi">cijeli obrazac</a>.
+            </p>
+          </div>
+
+          <figure class="brzo-kod">
+            <figcaption class="box-label">Kod za plaćanje</figcaption>
+            <img data-barkod src="/uplatnice/${uplatnica.id}/barkod.svg" alt="Barkod uplatnice">
+            <p class="field-hint" data-barkod-greska hidden>
+              Iznos ili opis nisu ispravni — kod se ne može prikazati.
+            </p>
+          </figure>
+        </div>
+
         <div class="actions">
-          <button class="btn primary" type="submit">Spremi</button>
-          <a class="btn" href="/uplatnice">Odustani</a>
+          <button class="btn primary" name="akcija" value="plati" type="submit">Plaćeno</button>
+          <button class="btn" name="akcija" value="spremi" type="submit">Samo spremi</button>
+          <a class="btn" href="${povratak || '/uplatnice'}">Odustani</a>
         </div>
       </form>
+
+      <script>
+        // Kod se osvježava dok tipkaš: server ga generira iz onoga što je u
+        // poljima, pa nema dvije istine o tome što će banka pročitati.
+        (() => {
+          const forma = document.querySelector('[data-barkod-url]');
+          if (!forma) return;
+          const slika = forma.querySelector('[data-barkod]');
+          const greska = forma.querySelector('[data-barkod-greska]');
+          const iznos = forma.querySelector('input[name=iznos]');
+          const opis = forma.querySelector('input[name=opis]');
+          let timer;
+
+          const osvjezi = () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+              const p = new URLSearchParams({ iznos: iznos.value, opis: opis.value });
+              slika.src = forma.dataset.barkodUrl + '?' + p.toString();
+            }, 350);
+          };
+
+          iznos.addEventListener('input', osvjezi);
+          opis.addEventListener('input', osvjezi);
+          slika.addEventListener('error', () => { slika.hidden = true; greska.hidden = false; });
+          slika.addEventListener('load', () => { slika.hidden = false; greska.hidden = true; });
+        })();
+      </script>
+    `,
+  });
+}
+
+/** Kratka obavijest prije povratka na prethodnu stranicu. */
+export function vracanjePage({ user, na, naziv }) {
+  return layout({
+    title: 'Plaćeno',
+    user,
+    body: html`
+      <div class="page-head"><h1>Plaćeno</h1></div>
+
+      <section class="card" data-vracanje="${na}">
+        <p>
+          Vraćam se na <strong>${naziv}</strong> za
+          <span data-brojac>5</span> s.
+        </p>
+        <p><a class="btn primary" href="${na}">Idi odmah</a></p>
+        <label class="check">
+          <input type="checkbox" data-bez-vracanja>
+          <span>Ne prikazuj ovu poruku više</span>
+        </label>
+      </section>
+
+      <script>
+        (() => {
+          const kutija = document.querySelector('[data-vracanje]');
+          if (!kutija) return;
+          const odrediste = kutija.dataset.vracanje;
+          const KLJUC = 'bez-vracanja';
+
+          if (localStorage.getItem(KLJUC) === 'da') {
+            location.replace(odrediste);
+            return;
+          }
+
+          const potvrdni = kutija.querySelector('[data-bez-vracanja]');
+          const brojac = kutija.querySelector('[data-brojac]');
+          potvrdni.addEventListener('change', () => {
+            localStorage.setItem(KLJUC, potvrdni.checked ? 'da' : 'ne');
+          });
+
+          let ostalo = 5;
+          setInterval(() => {
+            ostalo -= 1;
+            if (ostalo <= 0) { location.replace(odrediste); return; }
+            if (brojac) brojac.textContent = String(ostalo);
+          }, 1000);
+        })();
+      </script>
     `,
   });
 }
