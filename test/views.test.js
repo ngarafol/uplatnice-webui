@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import {
   detaljPage,
   formaPage,
-  iznosPage,
+  brzoPage,
   listaPage,
   platiPage,
   postavkePage,
@@ -62,7 +62,7 @@ test('stranice se renderiraju bez greške', () => {
     'Struja',
   );
   iscrtaj(formaPage({ mode: 'nova', values: {}, user: KORISNIK }), 'Nova uplatnica');
-  iscrtaj(iznosPage({ uplatnica: UPLATNICA, user: KORISNIK, values: { iznos: '70,00' } }), 'Promjena iznosa');
+  iscrtaj(brzoPage({ uplatnica: UPLATNICA, user: KORISNIK, values: { iznos: '70,00', opis: 'Test' } }), 'Brza izmjena');
   iscrtaj(detaljPage({ uplatnica: UPLATNICA, payments: [], user: KORISNIK }), 'Struja');
   iscrtaj(platiPage({ uplatnica: UPLATNICA, user: KORISNIK, nacini: [] }), 'Označi kao plaćeno');
   iscrtaj(povijestPage({ mjeseci: [], user: KORISNIK }), 'Povijest');

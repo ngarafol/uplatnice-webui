@@ -36,7 +36,7 @@ import {
   dashboardPage,
   errorPage,
   formaPage,
-  iznosPage,
+  brzoPage,
   listaPage,
   notFoundPage,
   platiPage,
@@ -741,34 +741,58 @@ export function createRouter(db) {
     res.redirect(303, `/uplatnice/${req.uplatnica.id}`);
   });
 
-  // Brza promjena samo iznosa — najčešća izmjena kod računa koji variraju.
-  router.get('/uplatnice/:id/iznos', requireLogin, loadUplatnica, ownerOnly, (req, res) => {
-    send(res, iznosPage({
+  // Brza izmjena onoga što se mijenja iz mjeseca u mjesec: iznos i opis.
+  router.get('/uplatnice/:id/brzo', requireLogin, loadUplatnica, ownerOnly, (req, res) => {
+    send(res, brzoPage({
       uplatnica: req.uplatnica,
       user: req.user,
-      values: { iznos: formatAmount(req.uplatnica.iznos_cents) },
+      values: { iznos: formatAmount(req.uplatnica.iznos_cents), opis: req.uplatnica.opis },
     }));
   });
 
-  router.post('/uplatnice/:id/iznos', requireLogin, loadUplatnica, ownerOnly, (req, res) => {
-    const tekst = String(req.body.iznos ?? '').trim();
+  router.post('/uplatnice/:id/brzo', requireLogin, loadUplatnica, ownerOnly, (req, res) => {
+    const tekstIznosa = String(req.body.iznos ?? '').trim();
+    const opis = String(req.body.opis ?? '').trim();
     const greske = {};
     let centi = null;
 
     try {
-      centi = parseAmount(tekst);
+      centi = parseAmount(tekstIznosa);
       // formatAmountField baca ako je iznos izvan granica polja u barkodu.
       formatAmountField(centi);
     } catch {
       greske.iznos = 'Iznos upiši kao broj, npr. 70,00.';
     }
 
-    if (Object.keys(greske).length) {
-      return send(res, iznosPage({ uplatnica: req.uplatnica, user: req.user, values: { iznos: tekst }, errors: greske }), 400);
+    // Oznake se pune datumom dospijeća; jednokratna uplatnica ga nema.
+    if (imaOznake(opis) && !req.uplatnica.interval_unit) {
+      greske.opis = 'Oznaka poput {MM} popunjava se datumom dospijeća — označi uplatnicu kao ponavljajuću.';
     }
 
-    db.prepare('UPDATE uplatnica SET iznos_cents = ?, updated_at = ? WHERE id = ?').run(
+    if (!greske.iznos && !greske.opis) {
+      // Ista pravila kao za cijeli obrazac — uključujući dužinu opisa mjerenu
+      // na razriješenom tekstu i oznake koje traže datum dospijeća.
+      const kandidat = { ...req.uplatnica, iznos_cents: centi, opis };
+      for (const greska of validate(payloadInput(req.user, kandidat)).errors) {
+        if (greska.field === 'payerName' || greska.field === 'payerAddress' || greska.field === 'payerCity') {
+          greske._ = 'Podaci o platitelju u profilu nisu ispravni — ispravi ih u Postavkama.';
+          continue;
+        }
+        if (greska.field === 'currency') continue;
+
+        const polje = FORM_FIELD[greska.field];
+        if (polje === 'iznos' || polje === 'opis') greske[polje] ??= greska.message;
+        else greske._ ??= 'Ostala polja uplatnice nisu ispravna — otvori cijeli obrazac.';
+      }
+    }
+
+    if (Object.keys(greske).length) {
+      return send(res, brzoPage({ uplatnica: req.uplatnica, user: req.user, values: { iznos: tekstIznosa, opis }, errors: greske }), 400);
+    }
+
+    db.prepare('UPDATE uplatnica SET iznos_cents = ?, opis = ?, updated_at = ? WHERE id = ?').run(
       centi,
+      opis,
       new Date().toISOString(),
       req.uplatnica.id,
     );

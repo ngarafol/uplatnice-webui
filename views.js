@@ -391,8 +391,8 @@ const uplatnicaRow = (uplatnica, today, povratak) => html`
     <td class="num">
       ${uplatnica.archived
         ? money(uplatnica.iznos_cents)
-        : html`<a class="iznos-link" href="/uplatnice/${uplatnica.id}/iznos"
-                   title="Promijeni iznos">${money(uplatnica.iznos_cents)}<svg class="iznos-olovka" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></a>`}
+        : html`<a class="iznos-link" href="/uplatnice/${uplatnica.id}/brzo"
+                   title="Promijeni iznos i opis">${money(uplatnica.iznos_cents)}<svg class="iznos-olovka" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></a>`}
     </td>
     <td class="mono">${uplatnica.poziv_na_broj || '—'}</td>
     <td>${formatDate(uplatnica.next_due)}</td>
@@ -498,7 +498,7 @@ export function listaPage({
       ${uvezeno > 0
         ? feedback(`Uvezeno ${plural(uvezeno, 'uplatnica', 'uplatnice', 'uplatnica')}.`, 'ok')
         : ''}
-      ${iznosSpremljen ? feedback('Iznos je promijenjen.', 'ok') : ''}
+      ${iznosSpremljen ? feedback('Spremljeno.', 'ok') : ''}
 
       <section class="card">
         ${uplatnicaTable(active, today, 'Nema aktivnih uplatnica.', '/uplatnice')}
@@ -1064,22 +1064,28 @@ export function uvozPage({ user, greska, greske = [], json = '' }) {
   });
 }
 
-export function iznosPage({ uplatnica, user, values = {}, errors = {} }) {
+/** Brza izmjena onoga što se mijenja iz mjeseca u mjesec: iznos i opis. */
+export function brzoPage({ uplatnica, user, values = {}, errors = {} }) {
   return layout({
-    title: 'Promjena iznosa',
+    title: 'Brza izmjena',
     user,
     body: html`
       <a class="back-link" href="/uplatnice">← Natrag</a>
-      <div class="page-head"><h1>Promjena iznosa</h1></div>
+      <div class="page-head"><h1>Brza izmjena</h1></div>
 
-      <form method="post" action="/uplatnice/${uplatnica.id}/iznos" class="card stack">
+      <form method="post" action="/uplatnice/${uplatnica.id}/brzo" class="card stack">
         <p class="muted">
           <strong>${uplatnica.label}</strong> · ${uplatnica.prim_name}
         </p>
+        ${errors._ ? feedback(errors._, 'ok') : ''}
         ${field({ name: 'iznos', label: 'Iznos (EUR)', value: values.iznos, required: true, error: errors.iznos, attrs: 'inputmode=decimal autofocus placeholder=70,00' })}
-        <p class="field-hint">Ostala polja ostaju kakva jesu. Ako trebaš više, otvori <a href="/uplatnice/${uplatnica.id}/uredi">cijeli obrazac</a>.</p>
+        ${field({ name: 'opis', label: 'Opis plaćanja', value: values.opis, error: errors.opis, hint: OZNAKE_HINT, attrs: 'maxlength=35 placeholder="npr. clanarina {MM}/{YY}"' })}
+        <p class="field-hint">
+          Ostala polja ostaju kakva jesu. Ako trebaš više, otvori
+          <a href="/uplatnice/${uplatnica.id}/uredi">cijeli obrazac</a>.
+        </p>
         <div class="actions">
-          <button class="btn primary" type="submit">Spremi iznos</button>
+          <button class="btn primary" type="submit">Spremi</button>
           <a class="btn" href="/uplatnice">Odustani</a>
         </div>
       </form>
